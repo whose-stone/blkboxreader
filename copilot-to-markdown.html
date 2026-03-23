@@ -463,7 +463,6 @@
   }
   footer span { color: var(--accent); }
 
-  /* Drop zone */
   .drop-zone {
     width: 100%;
     min-height: 160px;
@@ -509,7 +508,6 @@
     color: var(--text-dim);
   }
 
-  /* File info strip */
   .file-info {
     display: flex;
     align-items: center;
@@ -538,7 +536,6 @@
   }
   .file-clear:hover { border-color: var(--red); color: var(--red); }
 
-  /* API key bar */
   .apikey-bar {
     display: flex;
     align-items: center;
@@ -891,7 +888,7 @@
       setStep(2);
       showStatus(mode === 'text' ? 'Analysing conversation structure...' : 'Extracting visible text from HTML...');
 
-      const GEMINI_MODEL = 'gemini-2.0-flash';
+      const GEMINI_MODEL = 'gemini-2.0-flash-lite';
       const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + apiKey;
       const body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -914,7 +911,6 @@
           if (attempt === MAX_RETRIES) {
             throw new Error('Rate limit persists after ' + MAX_RETRIES + ' retries. Wait ~60s then try again, or upgrade your Gemini API plan.');
           }
-          // Honour Retry-After header if present, else use exponential backoff
           const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
           const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_DELAY_MS * Math.pow(2, attempt - 1);
           const waitSec = Math.round(waitMs / 1000);
