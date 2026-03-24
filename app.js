@@ -221,31 +221,52 @@
       }
 
       if (!turns.length) {
-        showStatus('Could not find Copilot conversation turns in this HTML. Please use a saved Copilot share page.', 'error');
-        return;
+        if (mode === 'url') {
+          // URL fetches can return reader/plain text from proxy fallbacks.
+          // In that case, continue with formatting-only plain text mode.
+          showStatus('Turn classes not found; using plain-text URL fallback...');
+          prompt =
+            'Below is plain text copied from a Microsoft Copilot conversation page.\n\n' +
+            'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
+            '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
+            '2. Identify speaker turns and label them **User:** and **Copilot:**\n' +
+            '3. Separate each turn with --- (horizontal rule).\n' +
+            '4. Detect and wrap code in fenced ``` blocks with language tags.\n' +
+            '5. Apply heading levels, bold, lists where visible in the text.\n' +
+            '6. Remove only UI chrome: button text like Copy / Regenerate / Like, navigation.\n' +
+            '7. Start with:\n' +
+            '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
+            'Output ONLY the markdown. No explanation.\n\n' +
+            'TEXT:\n\n' + rawInput.slice(0, 120000);
+        } else {
+          showStatus('Could not find Copilot conversation turns in this HTML. Please use a saved Copilot share page.', 'error');
+          return;
+        }
       }
 
-      // ── Step 2: build pre-labelled plain text from extracted turns ──────────
-      // Gemini only sees clean labelled text — it cannot summarise what it cannot see.
-      const extracted = turns
-        .map(t => '[' + t.role + ']\n' + t.text)
-        .join('\n\n---\n\n');
+      if (turns.length) {
+        // ── Step 2: build pre-labelled plain text from extracted turns ──────────
+        // Gemini only sees clean labelled text — it cannot summarise what it cannot see.
+        const extracted = turns
+          .map(t => '[' + t.role + ']\n' + t.text)
+          .join('\n\n---\n\n');
 
-      prompt =
-        'Below is a Microsoft Copilot conversation that has already been extracted from HTML.\n' +
-        'Each turn is labelled [USER] or [COPILOT] and the text is VERBATIM from the page.\n\n' +
-        'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
-        '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
-        '2. Replace [USER] with **User:** and [COPILOT] with **Copilot:**\n' +
-        '3. Separate each turn with --- (horizontal rule).\n' +
-        '4. Detect and wrap code blocks in fenced ``` blocks with the correct language tag.\n' +
-        '5. Apply heading levels (# ## ###) where the text already uses heading-like lines.\n' +
-        '6. Apply bold/italic where the text uses ** or * markers.\n' +
-        '7. Format bullet/numbered lists where they appear in the text.\n' +
-        '8. Start with this front matter:\n' +
-        '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-        'Output ONLY the final markdown. No explanation, no preamble, nothing else.\n\n' +
-        'CONVERSATION:\n\n' + extracted.slice(0, 120000);
+        prompt =
+          'Below is a Microsoft Copilot conversation that has already been extracted from HTML.\n' +
+          'Each turn is labelled [USER] or [COPILOT] and the text is VERBATIM from the page.\n\n' +
+          'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
+          '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
+          '2. Replace [USER] with **User:** and [COPILOT] with **Copilot:**\n' +
+          '3. Separate each turn with --- (horizontal rule).\n' +
+          '4. Detect and wrap code blocks in fenced ``` blocks with the correct language tag.\n' +
+          '5. Apply heading levels (# ## ###) where the text already uses heading-like lines.\n' +
+          '6. Apply bold/italic where the text uses ** or * markers.\n' +
+          '7. Format bullet/numbered lists where they appear in the text.\n' +
+          '8. Start with this front matter:\n' +
+          '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
+          'Output ONLY the final markdown. No explanation, no preamble, nothing else.\n\n' +
+          'CONVERSATION:\n\n' + extracted.slice(0, 120000);
+      }
     } else {
       // Plain text mode — emphasise verbatim strongly
       prompt =
