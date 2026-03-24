@@ -208,7 +208,7 @@
     const today = new Date().toISOString().slice(0,10);
     let prompt;
 
-    if (mode === 'html' || mode === 'upload') {
+    if (mode === 'html' || mode === 'upload' || mode === 'url') {
       // ── Step 1-2: extract in-browser ─────────────────────────────────────────
       setStep(2);
       showStatus('Extracting conversation turns...');
@@ -221,44 +221,31 @@
       }
 
       if (!turns.length) {
-        // Fallback: couldn't find Copilot-specific classes — send raw HTML
-        // with a strict verbatim instruction
-        prompt =
-          'You will receive HTML from a Microsoft Copilot conversation page.\n\n' +
-          'CRITICAL RULES — you MUST follow these exactly:\n' +
-          '1. Extract every word of visible text. DO NOT summarise, paraphrase, or omit anything.\n' +
-          '2. Copy all text VERBATIM — every sentence, every word, unchanged.\n' +
-          '3. Only apply Markdown formatting structure (headings, bold, code fences, lists).\n' +
-          '4. Remove only pure UI chrome: button labels (Copy, Like, Regenerate, Share), nav links, cookie banners.\n\n' +
-          'Output format:\n' +
-          '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-          'Use **User:** and **Copilot:** prefixes. Separate turns with ---.\n' +
-          'Wrap code blocks in fenced ``` blocks with the language tag.\n' +
-          'Output ONLY the markdown. No preamble.\n\n' +
-          'HTML:\n\n' + rawInput.slice(0, 120000);
-      } else {
-        // ── Step 2: build pre-labelled plain text from extracted turns ──────────
-        // Gemini only sees clean labelled text — it cannot summarise what it cannot see.
-        const extracted = turns
-          .map(t => '[' + t.role + ']\n' + t.text)
-          .join('\n\n---\n\n');
-
-        prompt =
-          'Below is a Microsoft Copilot conversation that has already been extracted from HTML.\n' +
-          'Each turn is labelled [USER] or [COPILOT] and the text is VERBATIM from the page.\n\n' +
-          'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
-          '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
-          '2. Replace [USER] with **User:** and [COPILOT] with **Copilot:**\n' +
-          '3. Separate each turn with --- (horizontal rule).\n' +
-          '4. Detect and wrap code blocks in fenced ``` blocks with the correct language tag.\n' +
-          '5. Apply heading levels (# ## ###) where the text already uses heading-like lines.\n' +
-          '6. Apply bold/italic where the text uses ** or * markers.\n' +
-          '7. Format bullet/numbered lists where they appear in the text.\n' +
-          '8. Start with this front matter:\n' +
-          '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-          'Output ONLY the final markdown. No explanation, no preamble, nothing else.\n\n' +
-          'CONVERSATION:\n\n' + extracted.slice(0, 120000);
+        showStatus('Could not find Copilot conversation turns in this HTML. Please use a saved Copilot share page.', 'error');
+        return;
       }
+
+      // ── Step 2: build pre-labelled plain text from extracted turns ──────────
+      // Gemini only sees clean labelled text — it cannot summarise what it cannot see.
+      const extracted = turns
+        .map(t => '[' + t.role + ']\n' + t.text)
+        .join('\n\n---\n\n');
+
+      prompt =
+        'Below is a Microsoft Copilot conversation that has already been extracted from HTML.\n' +
+        'Each turn is labelled [USER] or [COPILOT] and the text is VERBATIM from the page.\n\n' +
+        'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
+        '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
+        '2. Replace [USER] with **User:** and [COPILOT] with **Copilot:**\n' +
+        '3. Separate each turn with --- (horizontal rule).\n' +
+        '4. Detect and wrap code blocks in fenced ``` blocks with the correct language tag.\n' +
+        '5. Apply heading levels (# ## ###) where the text already uses heading-like lines.\n' +
+        '6. Apply bold/italic where the text uses ** or * markers.\n' +
+        '7. Format bullet/numbered lists where they appear in the text.\n' +
+        '8. Start with this front matter:\n' +
+        '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
+        'Output ONLY the final markdown. No explanation, no preamble, nothing else.\n\n' +
+        'CONVERSATION:\n\n' + extracted.slice(0, 120000);
     } else {
       // Plain text mode — emphasise verbatim strongly
       prompt =
