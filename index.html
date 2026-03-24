@@ -25,9 +25,25 @@
   </div>
 
   <div class="mode-tabs">
+    <button class="mode-tab" onclick="setMode('url', this)">Paste Share URL</button>
     <button class="mode-tab active" onclick="setMode('html', this)">Paste HTML Source</button>
     <button class="mode-tab" onclick="setMode('upload', this)">Upload HTML File</button>
     <button class="mode-tab" onclick="setMode('text', this)">Paste Plain Text</button>
+  </div>
+
+  <div class="input-panel" id="panel-url">
+    <div class="instructions">
+      <strong>Fetch from shared URL</strong>
+      <ol>
+        <li>Paste a public Copilot share URL (<code>https://copilot.microsoft.com/shares/...</code>)</li>
+        <li>Click Convert and the app will try to fetch page content automatically</li>
+        <li>If browser fetch is blocked, use <code>node scripts/save-copilot-share-html.js ...</code> then Upload HTML File</li>
+      </ol>
+    </div>
+    <label class="field-label">Copilot Share URL</label>
+    <input class="apikey-input" id="urlInput" type="url" placeholder="https://copilot.microsoft.com/shares/..." autocomplete="off" spellcheck="false" />
+    <br/>
+    <button class="convert-btn" id="convertBtnUrl" onclick="startConversion('url')">Fetch + Convert &#8594; Markdown</button>
   </div>
 
   <div class="input-panel active" id="panel-html">

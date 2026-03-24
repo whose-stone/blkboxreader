@@ -141,12 +141,51 @@
     document.getElementById('statusBar').className = 'status-bar';
   }
 
+  async function fetchShareHtmlFromUrl(url) {
+    const cleaned = (url || '').trim();
+    if (!/^https:\/\/copilot\.microsoft\.com\/shares\//.test(cleaned)) {
+      throw new Error('Please enter a valid Copilot share URL.');
+    }
+
+    // Try direct fetch first (works in some environments)
+    try {
+      const direct = await fetch(cleaned, { method: 'GET' });
+      if (direct.ok) {
+        const html = await direct.text();
+        if (html && html.length > 500) return html;
+      }
+    } catch (_) {}
+
+    // Fallback to a read proxy to avoid CORS blocks in static hosting.
+    const proxyUrl = 'https://r.jina.ai/http://' + cleaned.replace(/^https?:\/\//, '');
+    const proxyRes = await fetch(proxyUrl, { method: 'GET' });
+    if (!proxyRes.ok) {
+      throw new Error('Could not fetch this URL from the browser. Try Upload HTML File mode with the CLI helper.');
+    }
+    const proxyText = await proxyRes.text();
+    if (!proxyText || proxyText.length < 200) {
+      throw new Error('Fetched content was empty. Try Upload HTML File mode with the CLI helper.');
+    }
+    return proxyText;
+  }
+
   // ── Main conversion ──────────────────────────────────────────────────────────
   async function startConversion(mode) {
     let rawInput;
     if (mode === 'upload') {
       if (!uploadedFileContent) { showStatus('No file loaded - please upload an HTML file first.', 'error'); return; }
       rawInput = uploadedFileContent;
+    } else if (mode === 'url') {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showStatus('Please paste a Copilot share URL first.', 'error'); return; }
+      showStatus('Fetching share URL...');
+      setStep(1);
+      try {
+        rawInput = await fetchShareHtmlFromUrl(url);
+      } catch (err) {
+        showStatus(err.message, 'error');
+        return;
+      }
     } else {
       rawInput = mode === 'html'
         ? document.getElementById('htmlInput').value.trim()
@@ -159,7 +198,7 @@
     const apiKey = document.getElementById('apiKeyInput').value.trim();
     if (!apiKey) { showStatus('Please enter your Gemini API key above.', 'error'); return; }
 
-    ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
+    ['convertBtnUrl','convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
       const el = document.getElementById(id); if (el) el.disabled = true;
     });
     document.getElementById('outputSection').className = 'output-section';
@@ -296,7 +335,7 @@
       showStatus('Failed: ' + err.message, 'error');
       console.error(err);
     } finally {
-      ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
+      ['convertBtnUrl','convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
         const el = document.getElementById(id); if (el) el.disabled = false;
       });
     }
@@ -358,6 +397,7 @@
   }
 
   function resetAll() {
+    document.getElementById('urlInput').value = '';
     document.getElementById('htmlInput').value = '';
     document.getElementById('textInput').value = '';
     clearFile();
