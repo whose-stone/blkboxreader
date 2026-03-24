@@ -477,36 +477,16 @@
     transition: border-color 0.2s, background 0.2s;
     padding: 32px 24px;
     text-align: center;
-    position: relative;
   }
   .drop-zone:hover, .drop-zone.drag-over {
     border-color: var(--accent);
     background: var(--accent-dim);
   }
   .drop-zone.drag-over { box-shadow: 0 0 0 3px var(--accent-dim); }
-
-  .drop-icon {
-    font-size: 28px;
-    color: var(--text-dim);
-    line-height: 1;
-    transition: color 0.2s, transform 0.2s;
-  }
-  .drop-zone:hover .drop-icon, .drop-zone.drag-over .drop-icon {
-    color: var(--accent);
-    transform: translateY(-3px);
-  }
-
-  .drop-primary {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
-  .drop-secondary {
-    font-family: var(--sans);
-    font-size: 12px;
-    color: var(--text-dim);
-  }
+  .drop-icon { font-size: 28px; color: var(--text-dim); line-height: 1; transition: color 0.2s, transform 0.2s; }
+  .drop-zone:hover .drop-icon, .drop-zone.drag-over .drop-icon { color: var(--accent); transform: translateY(-3px); }
+  .drop-primary { font-family: var(--mono); font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  .drop-secondary { font-family: var(--sans); font-size: 12px; color: var(--text-dim); }
 
   .file-info {
     display: flex;
@@ -523,16 +503,9 @@
   #fileName { color: var(--text); font-family: var(--mono); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-size { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
   .file-clear {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 4px 10px;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    transition: border-color 0.15s, color 0.15s;
-    white-space: nowrap;
+    background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+    font-family: var(--mono); font-size: 10px; padding: 4px 10px; cursor: pointer;
+    letter-spacing: 0.05em; transition: border-color 0.15s, color 0.15s; white-space: nowrap;
   }
   .file-clear:hover { border-color: var(--red); color: var(--red); }
 
@@ -546,35 +519,15 @@
     margin-bottom: 28px;
     flex-wrap: wrap;
   }
-  .apikey-label {
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+  .apikey-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
   .apikey-input {
-    flex: 1;
-    min-width: 200px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 8px 12px;
-    outline: none;
-    transition: border-color 0.2s;
-    letter-spacing: 0.05em;
+    flex: 1; min-width: 200px; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 12px; padding: 8px 12px;
+    outline: none; transition: border-color 0.2s; letter-spacing: 0.05em;
   }
   .apikey-input::placeholder { color: var(--text-dim); }
   .apikey-input:focus { border-color: var(--accent); }
-  .apikey-hint {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: var(--sans);
-    white-space: nowrap;
-  }
+  .apikey-hint { font-size: 10px; color: var(--text-dim); font-family: var(--sans); white-space: nowrap; }
   .apikey-hint a { color: var(--text-muted); text-decoration: none; }
   .apikey-hint a:hover { color: var(--accent); }
 
@@ -595,14 +548,8 @@
 
   <div class="apikey-bar">
     <span class="apikey-label">Gemini API Key</span>
-    <input
-      class="apikey-input"
-      id="apiKeyInput"
-      type="password"
-      placeholder="GEMINI_API_KEY &#8212; paste your key here"
-      autocomplete="off"
-      spellcheck="false"
-    />
+    <input class="apikey-input" id="apiKeyInput" type="password"
+      placeholder="GEMINI_API_KEY &#8212; paste your key here" autocomplete="off" spellcheck="false" />
     <span class="apikey-hint">Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></span>
   </div>
 
@@ -612,7 +559,6 @@
     <button class="mode-tab" onclick="setMode('text', this)">Paste Plain Text</button>
   </div>
 
-  <!-- HTML paste mode -->
   <div class="input-panel active" id="panel-html">
     <div class="instructions">
       <strong>How to get the HTML source</strong>
@@ -629,7 +575,6 @@
     <button class="convert-btn" id="convertBtnHtml" onclick="startConversion('html')">Convert &#8594; Markdown</button>
   </div>
 
-  <!-- File upload mode -->
   <div class="input-panel" id="panel-upload">
     <div class="instructions">
       <strong>How to save the HTML file</strong>
@@ -657,7 +602,6 @@
     <button class="convert-btn" id="convertBtnUpload" onclick="startConversion('upload')">Convert &#8594; Markdown</button>
   </div>
 
-  <!-- Plain text mode -->
   <div class="input-panel" id="panel-text">
     <div class="instructions">
       <strong>How to get the plain text</strong>
@@ -673,14 +617,13 @@
     <button class="convert-btn" id="convertBtnText" onclick="startConversion('text')">Convert &#8594; Markdown</button>
   </div>
 
-  <!-- Status -->
   <div class="status-bar" id="statusBar">
     <div class="status-head">
       <div class="spinner"></div>
       <span class="status-lbl" id="statusLbl">Processing</span>
     </div>
     <div class="status-msg" id="statusMsg">Starting&#8230;</div>
-    <div class="steps" id="stepsRow">
+    <div class="steps">
       <div class="step" id="s1"><div class="step-dot"></div>Parse Input</div>
       <div class="step" id="s2"><div class="step-dot"></div>Extract Text</div>
       <div class="step" id="s3"><div class="step-dot"></div>Format Markdown</div>
@@ -688,7 +631,6 @@
     </div>
   </div>
 
-  <!-- Output -->
   <div class="output-section" id="outputSection">
     <div class="output-header">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -701,12 +643,10 @@
         <button class="btn-dl" onclick="downloadMd()">&#8595; Download .md</button>
       </div>
     </div>
-
     <div class="out-tabs">
       <button class="out-tab active" onclick="switchOutTab('raw',this)">Raw Markdown</button>
       <button class="out-tab" onclick="switchOutTab('preview',this)">Preview</button>
     </div>
-
     <div class="out-pane active" id="paneRaw">
       <textarea class="md-editor" id="mdOut" spellcheck="false"></textarea>
       <div class="char-line" id="charLine">0 chars &middot; 0 lines</div>
@@ -716,11 +656,14 @@
     </div>
   </div>
 
-  <footer><span>&#9632;</span> Powered by Google Gemini</footer>
+  <footer><span>&#9632;</span> Powered by Google Gemini 1.5 Flash</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
+  // Model: gemini-1.5-flash — stable, free tier, available to all API keys
+  const GEMINI_MODEL = 'gemini-1.5-flash';
+
   let currentMd = '';
   let currentFilename = 'copilot-chat.md';
   let uploadedFileContent = null;
@@ -731,8 +674,7 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    if (files.length) handleFileSelect(files);
+    if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files);
   });
 
   function handleFileSelect(files) {
@@ -763,10 +705,10 @@
     hideStatus();
   }
 
-  function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
   }
 
   function setMode(mode, btn) {
@@ -779,8 +721,8 @@
 
   function setStep(n) {
     for (let i = 1; i <= 4; i++) {
-      const el = document.getElementById('s' + i);
-      el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+      document.getElementById('s' + i).className =
+        'step' + (i < n ? ' done' : i === n ? ' active' : '');
     }
   }
 
@@ -798,10 +740,7 @@
   async function startConversion(mode) {
     let rawInput;
     if (mode === 'upload') {
-      if (!uploadedFileContent) {
-        showStatus('No file loaded - please upload an HTML file first.', 'error');
-        return;
-      }
+      if (!uploadedFileContent) { showStatus('No file loaded - please upload an HTML file first.', 'error'); return; }
       rawInput = uploadedFileContent;
     } else {
       rawInput = mode === 'html'
@@ -809,112 +748,74 @@
         : document.getElementById('textInput').value.trim();
     }
 
-    if (!rawInput) {
-      showStatus('Nothing to convert - please paste some content first.', 'error');
-      return;
-    }
-    if (rawInput.length < 100) {
-      showStatus('The content looks too short. Make sure you have the full page.', 'error');
-      return;
-    }
+    if (!rawInput) { showStatus('Nothing to convert - please paste some content first.', 'error'); return; }
+    if (rawInput.length < 100) { showStatus('Content looks too short. Make sure you have the full page.', 'error'); return; }
+
+    const apiKey = document.getElementById('apiKeyInput').value.trim();
+    if (!apiKey) { showStatus('Please enter your Gemini API key above.', 'error'); return; }
 
     ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.disabled = true;
+      const el = document.getElementById(id); if (el) el.disabled = true;
     });
     document.getElementById('outputSection').className = 'output-section';
-
     showStatus('Sending to Gemini for processing...');
     setStep(1);
 
     const today = new Date().toISOString().slice(0,10);
+    const isHtml = (mode === 'html' || mode === 'upload');
 
-    let prompt;
-    if (mode === 'html' || mode === 'upload') {
-      prompt = 'You are a precise text-extraction and markdown-formatting tool.\n\n'
+    const prompt = isHtml
+      ? 'You are a precise text-extraction and markdown-formatting tool.\n\n'
         + 'You will receive the raw HTML source of a Microsoft Copilot shared conversation page.\n\n'
         + 'Your task:\n'
-        + '1. Extract ONLY the visible text content - text that appears between HTML tags (text nodes). Do NOT include tag names, attribute names, attribute values, class names, IDs, script contents, or CSS style rules.\n'
+        + '1. Extract ONLY the visible text content - text nodes between HTML tags. Do NOT include tag names, attributes, class names, IDs, script contents, or CSS.\n'
         + '2. Identify the conversation structure: user messages vs Copilot/AI responses, code blocks, headings, links, lists.\n'
-        + '3. Reformat as clean, well-structured Markdown WITHOUT changing any words, meaning, or factual content. Only improve formatting:\n'
-        + '   - Start with a YAML front matter block:\n'
-        + '     ---\n'
-        + '     source: Microsoft Copilot Shared Conversation\n'
-        + '     exported: ' + today + '\n'
-        + '     ---\n'
-        + '   - Use **User:** and **Copilot:** prefixes (bold) for each conversation turn\n'
-        + '   - Separate each turn with a horizontal rule (---)\n'
-        + '   - Wrap code in fenced code blocks with the correct language tag\n'
-        + '   - Preserve any lists as markdown lists\n'
-        + '   - Preserve any links as markdown links [text](url)\n'
-        + '   - Use proper heading levels\n'
-        + '   - Remove boilerplate UI text: navigation, cookie banners, footer links, button labels like "Copy", "Regenerate", "Like", "Share", "Feedback", etc.\n'
-        + '4. Output ONLY the final markdown. No explanations, no preamble, no commentary.\n\n'
-        + 'Here is the HTML source:\n\n'
-        + rawInput.slice(0, 120000);
-    } else {
-      prompt = 'You are a markdown formatting tool.\n\n'
-        + 'You will receive plain text copied from a Microsoft Copilot shared conversation page (selected via Ctrl+A in browser).\n\n'
+        + '3. Reformat as clean Markdown WITHOUT changing any words or meaning:\n'
+        + '   - Start with: ---\n     source: Microsoft Copilot Shared Conversation\n     exported: ' + today + '\n     ---\n'
+        + '   - Use **User:** and **Copilot:** prefixes for each turn\n'
+        + '   - Separate turns with --- (horizontal rule)\n'
+        + '   - Wrap code in fenced code blocks with language tags\n'
+        + '   - Preserve lists, links [text](url), and headings\n'
+        + '   - Remove UI boilerplate: nav, cookie banners, buttons like Copy/Regenerate/Like/Share\n'
+        + '4. Output ONLY the final markdown. No explanations.\n\n'
+        + 'HTML source:\n\n' + rawInput.slice(0, 120000)
+      : 'You are a markdown formatting tool.\n\n'
+        + 'You will receive plain text copied from a Microsoft Copilot shared conversation page.\n\n'
         + 'Your task:\n'
-        + '1. Identify the conversation structure: user messages vs Copilot/AI responses, any code, lists, headings.\n'
-        + '2. Reformat as clean, well-structured Markdown WITHOUT changing any words or factual content. Only improve formatting:\n'
-        + '   - Start with a YAML front matter block:\n'
-        + '     ---\n'
-        + '     source: Microsoft Copilot Shared Conversation\n'
-        + '     exported: ' + today + '\n'
-        + '     ---\n'
-        + '   - Use **User:** and **Copilot:** prefixes (bold) for each conversation turn\n'
-        + '   - Separate each turn with a horizontal rule (---)\n'
-        + '   - Detect and wrap code in fenced code blocks with language hints\n'
-        + '   - Preserve any lists as proper markdown lists\n'
-        + '   - Use appropriate heading levels\n'
-        + '   - Remove UI boilerplate: button labels like "Copy", "Regenerate", "Like", navigation text, etc.\n'
-        + '3. Output ONLY the final markdown. No explanations, no preamble.\n\n'
-        + 'Here is the plain text:\n\n'
-        + rawInput.slice(0, 120000);
-    }
+        + '1. Identify conversation structure: user vs Copilot turns, code, lists, headings.\n'
+        + '2. Reformat as clean Markdown WITHOUT changing any words:\n'
+        + '   - Start with: ---\n     source: Microsoft Copilot Shared Conversation\n     exported: ' + today + '\n     ---\n'
+        + '   - Use **User:** and **Copilot:** prefixes for each turn\n'
+        + '   - Separate turns with --- (horizontal rule)\n'
+        + '   - Wrap code in fenced code blocks\n'
+        + '   - Preserve lists and headings\n'
+        + '   - Remove UI boilerplate: Copy/Regenerate/Like buttons, navigation\n'
+        + '3. Output ONLY the final markdown. No explanations.\n\n'
+        + 'Plain text:\n\n' + rawInput.slice(0, 120000);
 
-    const apiKey = document.getElementById('apiKeyInput').value.trim();
-    if (!apiKey) {
-      showStatus('Please enter your Gemini API key above.', 'error');
-      ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = false;
-      });
-      return;
-    }
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + GEMINI_MODEL + ':generateContent?key=' + apiKey;
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
+    });
+
+    const MAX_RETRIES = 4;
+    const BASE_MS = 8000;
 
     try {
       setStep(2);
       showStatus(mode === 'text' ? 'Analysing conversation structure...' : 'Extracting visible text from HTML...');
 
-      const GEMINI_MODEL = 'gemini-2.0-flash-lite';
-      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + apiKey;
-      const body = JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 8192, temperature: 0.1 }
-      });
-
-      // Retry with exponential backoff for 429 rate-limit responses
-      const MAX_RETRIES = 4;
-      const BASE_DELAY_MS = 8000; // 8s base - Gemini free tier resets per minute
       let data;
-
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body
-        });
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
 
         if (res.status === 429) {
-          if (attempt === MAX_RETRIES) {
-            throw new Error('Rate limit persists after ' + MAX_RETRIES + ' retries. Wait ~60s then try again, or upgrade your Gemini API plan.');
-          }
+          if (attempt === MAX_RETRIES) throw new Error('Rate limit persists after retries. Wait ~60s then try again.');
           const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
-          const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_DELAY_MS * Math.pow(2, attempt - 1);
-          const waitSec = Math.round(waitMs / 1000);
-          showStatus('Rate limit hit - retrying in ' + waitSec + 's... (attempt ' + attempt + '/' + MAX_RETRIES + ')');
+          const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_MS * Math.pow(2, attempt - 1);
+          showStatus('Rate limit hit - retrying in ' + Math.round(waitMs/1000) + 's... (attempt ' + attempt + '/' + MAX_RETRIES + ')');
           await new Promise(r => setTimeout(r, waitMs));
           showStatus(mode === 'text' ? 'Analysing conversation structure...' : 'Extracting visible text from HTML...');
           continue;
@@ -922,11 +823,8 @@
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          const msg = err.error && err.error.message ? err.error.message : ('API error ' + res.status);
-          throw new Error(
-            res.status === 400 ? ('Bad request: ' + msg) :
-            res.status === 403 ? 'Invalid API key - check your Gemini key and try again.' : msg
-          );
+          const msg = (err.error && err.error.message) || ('API error ' + res.status);
+          throw new Error(res.status === 403 ? 'Invalid API key - check your Gemini key and try again.' : msg);
         }
 
         data = await res.json();
@@ -936,7 +834,7 @@
       setStep(3);
       showStatus('Formatting markdown...');
 
-      const text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
+      const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
         ? data.candidates[0].content.parts.map(p => p.text || '').join('\n').trim()
         : '';
 
@@ -945,7 +843,6 @@
       setStep(4);
       currentMd = text;
       currentFilename = 'copilot-chat-' + today + '.md';
-
       renderOutput(text);
       hideStatus();
 
@@ -954,22 +851,18 @@
       console.error(err);
     } finally {
       ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = false;
+        const el = document.getElementById(id); if (el) el.disabled = false;
       });
     }
   }
 
   function renderOutput(md) {
-    const ta = document.getElementById('mdOut');
-    ta.value = md;
+    document.getElementById('mdOut').value = md;
     updateCharLine();
-
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true });
       document.getElementById('mdPreview').innerHTML = marked.parse(md);
     }
-
     document.getElementById('charBadge').textContent = md.length.toLocaleString() + ' chars';
     document.getElementById('outputSection').className = 'output-section visible';
     document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -984,9 +877,8 @@
   document.getElementById('mdOut').addEventListener('input', function() {
     currentMd = this.value;
     updateCharLine();
-    if (document.getElementById('panePreview').classList.contains('active') && typeof marked !== 'undefined') {
+    if (document.getElementById('panePreview').classList.contains('active') && typeof marked !== 'undefined')
       document.getElementById('mdPreview').innerHTML = marked.parse(currentMd);
-    }
   });
 
   function switchOutTab(tab, btn) {
@@ -1001,8 +893,7 @@
   }
 
   function downloadMd() {
-    const content = document.getElementById('mdOut').value;
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([document.getElementById('mdOut').value], { type: 'text/markdown;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = currentFilename;
@@ -1013,14 +904,10 @@
   async function copyMd() {
     try {
       await navigator.clipboard.writeText(document.getElementById('mdOut').value);
-      const btn = event.target;
-      const o = btn.textContent;
+      const btn = event.target, o = btn.textContent;
       btn.textContent = 'Copied!';
       setTimeout(() => btn.textContent = o, 1500);
-    } catch (e) {
-      document.getElementById('mdOut').select();
-      document.execCommand('copy');
-    }
+    } catch { document.getElementById('mdOut').select(); document.execCommand('copy'); }
   }
 
   function resetAll() {
