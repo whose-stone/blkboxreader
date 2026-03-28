@@ -1,5 +1,3 @@
-const GEMINI_MODEL = 'gemini-2.5-flash';
-
   let currentMd = '';
   let currentFilename = 'copilot-chat.md';
   let uploadedFileContent = null;
@@ -55,11 +53,11 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
   //   Copilot turns:  elements whose class contains "group/ai-message-item"
   //
   // We extract text from each in DOM order, handling <pre> code blocks specially,
-  // then hand the already-labelled plain text to Gemini for formatting only.
+  // then format the extracted turns directly into markdown locally.
 
   function getNodeText(node) {
     // Walk the node tree and build a plain-text representation.
-    // <pre> blocks get fenced with ``` so Gemini knows to keep them verbatim.
+    // <pre> blocks get fenced with ``` so code is preserved in markdown.
     let out = '';
     for (const child of node.childNodes) {
       if (child.nodeType === Node.TEXT_NODE) {
@@ -192,6 +190,17 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
     return slug + '.html';
   }
 
+  function buildMarkdownFromTurns(turns, today) {
+    const body = turns
+      .map(t => `**${t.role === 'USER' ? 'User' : 'Copilot'}:**\n\n${t.text}`)
+      .join('\n\n---\n\n');
+    return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${body}\n`;
+  }
+
+  function buildMarkdownFromPlainText(text, today) {
+    return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${text.trim()}\n`;
+  }
+
   async function downloadHtmlFromUrl() {
     const btn = document.getElementById('downloadHtmlBtn');
     const url = document.getElementById('urlInput').value.trim();
@@ -253,9 +262,6 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
     if (!rawInput) { showStatus('Nothing to convert - please paste some content first.', 'error'); return; }
     if (rawInput.length < 100) { showStatus('Content looks too short. Make sure you have the full page.', 'error'); return; }
 
-    const apiKey = document.getElementById('apiKeyInput').value.trim();
-    if (!apiKey) { showStatus('Please enter your Gemini API key above.', 'error'); return; }
-
     ['convertBtnUrl','convertBtnHtml','convertBtnText','convertBtnUpload','downloadHtmlBtn'].forEach(id => {
       const el = document.getElementById(id); if (el) el.disabled = true;
     });
@@ -264,138 +270,44 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
     showStatus('Parsing HTML...');
 
     const today = new Date().toISOString().slice(0,10);
-    let prompt;
-
+    let extractedTurns = [];
     if (mode === 'html' || mode === 'upload' || mode === 'url') {
       // ── Step 1-2: extract in-browser ─────────────────────────────────────────
       setStep(2);
       showStatus('Extracting conversation turns...');
 
-      let turns;
       try {
-        turns = extractTurnsFromHtml(rawInput);
+        extractedTurns = extractTurnsFromHtml(rawInput);
       } catch(e) {
-        turns = [];
+        extractedTurns = [];
       }
 
-      if (!turns.length) {
+      if (!extractedTurns.length) {
         if (mode === 'url') {
           // URL fetches can return reader/plain text from proxy fallbacks.
-          // In that case, continue with formatting-only plain text mode.
+          // In that case, continue with plain-text local formatting.
           showStatus('Turn classes not found; using plain-text URL fallback...');
-          prompt =
-            'Below is plain text copied from a Microsoft Copilot conversation page.\n\n' +
-            'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
-            '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
-            '2. Identify speaker turns and label them **User:** and **Copilot:**\n' +
-            '3. Separate each turn with --- (horizontal rule).\n' +
-            '4. Detect and wrap code in fenced ``` blocks with language tags.\n' +
-            '5. Apply heading levels, bold, lists where visible in the text.\n' +
-            '6. Remove only UI chrome: button text like Copy / Regenerate / Like, navigation.\n' +
-            '7. Start with:\n' +
-            '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-            'Output ONLY the markdown. No explanation.\n\n' +
-            'TEXT:\n\n' + rawInput.slice(0, 120000);
         } else {
           showStatus('Could not find Copilot conversation turns in this HTML. Please use a saved Copilot share page.', 'error');
           return;
         }
       }
-
-      if (turns.length) {
-        // ── Step 2: build pre-labelled plain text from extracted turns ──────────
-        // Gemini only sees clean labelled text — it cannot summarise what it cannot see.
-        const extracted = turns
-          .map(t => '[' + t.role + ']\n' + t.text)
-          .join('\n\n---\n\n');
-
-        prompt =
-          'Below is a Microsoft Copilot conversation that has already been extracted from HTML.\n' +
-          'Each turn is labelled [USER] or [COPILOT] and the text is VERBATIM from the page.\n\n' +
-          'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
-          '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
-          '2. Replace [USER] with **User:** and [COPILOT] with **Copilot:**\n' +
-          '3. Separate each turn with --- (horizontal rule).\n' +
-          '4. Detect and wrap code blocks in fenced ``` blocks with the correct language tag.\n' +
-          '5. Apply heading levels (# ## ###) where the text already uses heading-like lines.\n' +
-          '6. Apply bold/italic where the text uses ** or * markers.\n' +
-          '7. Format bullet/numbered lists where they appear in the text.\n' +
-          '8. Start with this front matter:\n' +
-          '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-          'Output ONLY the final markdown. No explanation, no preamble, nothing else.\n\n' +
-          'CONVERSATION:\n\n' + extracted.slice(0, 120000);
-      }
-    } else {
-      // Plain text mode — emphasise verbatim strongly
-      prompt =
-        'Below is plain text copied from a Microsoft Copilot conversation page.\n\n' +
-        'Your ONLY job is to apply clean Markdown formatting. Rules:\n' +
-        '1. COPY ALL TEXT EXACTLY AS GIVEN — do not change, summarise, or omit a single word.\n' +
-        '2. Identify speaker turns and label them **User:** and **Copilot:**\n' +
-        '3. Separate each turn with --- (horizontal rule).\n' +
-        '4. Detect and wrap code in fenced ``` blocks with language tags.\n' +
-        '5. Apply heading levels, bold, lists where visible in the text.\n' +
-        '6. Remove only UI chrome: button text like Copy / Regenerate / Like, navigation.\n' +
-        '7. Start with:\n' +
-        '---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-        'Output ONLY the markdown. No explanation.\n\n' +
-        'TEXT:\n\n' + rawInput.slice(0, 120000);
     }
 
-    // ── Step 3: send to Gemini for formatting ─────────────────────────────────
+    // ── Step 3: build markdown locally (no LLM dependency) ───────────────────
     setStep(3);
-    showStatus('Sending to Gemini for formatting...');
-
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-      GEMINI_MODEL + ':generateContent?key=' + apiKey;
-    const body = JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.0 }
-    });
-
-    const MAX_RETRIES = 4;
-    const BASE_MS = 8000;
+    showStatus('Formatting markdown locally...');
 
     try {
-      let data;
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body
-        });
-
-        if (res.status === 429) {
-          if (attempt === MAX_RETRIES) throw new Error('Rate limit persists after retries. Wait ~60s then try again.');
-          const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
-          const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_MS * Math.pow(2, attempt - 1);
-          showStatus('Rate limit hit - retrying in ' + Math.round(waitMs/1000) + 's... (attempt ' + attempt + '/' + MAX_RETRIES + ')');
-          await new Promise(r => setTimeout(r, waitMs));
-          showStatus('Sending to Gemini for formatting...');
-          continue;
-        }
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          const msg = (err.error && err.error.message) || ('API error ' + res.status);
-          throw new Error(res.status === 403 ? 'Invalid API key - check your Gemini key and try again.' : msg);
-        }
-
-        data = await res.json();
-        break;
-      }
-
-      const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
-        ? data.candidates[0].content.parts.map(p => p.text || '').join('\n').trim()
-        : '';
-
-      if (!text) throw new Error('Gemini returned an empty response. Please try again.');
+      const text = extractedTurns.length
+        ? buildMarkdownFromTurns(extractedTurns, today)
+        : buildMarkdownFromPlainText(rawInput, today);
 
       setStep(4);
       currentMd = text;
       currentFilename = 'copilot-chat-' + today + '.md';
       renderOutput(text);
-      hideStatus();
+      showStatus('Done. Converted locally (no LLM used).');
 
     } catch (err) {
       showStatus('Failed: ' + err.message, 'error');
@@ -473,3 +385,32 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
     hideStatus();
     currentMd = '';
   }
+
+  function getBookmarkletPayload() {
+    return "(function(){try{const U='[class*=\\\"group/user-message\\\"],[data-content=\\\"user-message\\\"]';const A='[class*=\\\"group/ai-message-item\\\"],[data-content=\\\"ai-message-item\\\"]';const nodeText=(n)=>{let o='';for(const c of n.childNodes){if(c.nodeType===Node.TEXT_NODE){o+=c.textContent||'';continue;}if(c.nodeType!==Node.ELEMENT_NODE)continue;const t=c.tagName.toLowerCase();if(t==='script'||t==='style'||t==='noscript')continue;if(t==='pre'){o+='\\n```\\n'+(c.textContent||'')+'\\n```\\n';continue;}if(t==='br'){o+='\\n';continue;}o+=nodeText(c);}return o;};const users=Array.from(document.querySelectorAll(U)).map(el=>({el,role:'User'}));const ais=Array.from(document.querySelectorAll(A)).map(el=>({el,role:'Copilot'}));const all=users.concat(ais).sort((a,b)=>{const r=a.el.compareDocumentPosition(b.el);if(r&Node.DOCUMENT_POSITION_FOLLOWING)return-1;if(r&Node.DOCUMENT_POSITION_PRECEDING)return 1;return 0;});if(!all.length){alert('No Copilot turns found on this page. Open a shared conversation first.');return;}const today=new Date().toISOString().slice(0,10);const turns=all.map(({role,el})=>({role,text:nodeText(el).replace(/\\n{3,}/g,'\\n\\n').trim()})).filter(t=>t.text);if(!turns.length){alert('Found message containers, but no text content.');return;}const body=turns.map(t=>'**'+t.role+':**\\n\\n'+t.text).join('\\n\\n---\\n\\n');const md='---\\nsource: Microsoft Copilot Shared Conversation\\nexported: '+today+'\\n---\\n\\n'+body+'\\n';const slug=(location.pathname.split('/').pop()||'copilot-chat').replace(/[^a-zA-Z0-9_-]/g,'')||'copilot-chat';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown;charset=utf-8'}));a.download=slug+'-'+today+'.md';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}catch(e){alert('Copilot-to-Markdown bookmarklet failed: '+(e&&e.message?e.message:e));}})();";
+  }
+
+  function initBookmarkletUi() {
+    const link = document.getElementById('bookmarkletLink');
+    const copyBtn = document.getElementById('copyBookmarkletBtn');
+    if (!link) return;
+
+    const payload = getBookmarkletPayload();
+    link.setAttribute('href', 'javascript:' + payload);
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const txt = 'javascript:' + payload;
+        try {
+          await navigator.clipboard.writeText(txt);
+          const old = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => (copyBtn.textContent = old), 1500);
+        } catch {
+          showStatus('Could not copy bookmarklet automatically. Drag the bookmark link manually.', 'error');
+        }
+      });
+    }
+  }
+
+  initBookmarkletUi();

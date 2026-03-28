@@ -18,12 +18,19 @@
     </div>
   </header>
 
-  <div class="api-key-row">
-    <label class="api-key-label">Gemini API Key</label>
-    <input type="text" id="apiKeyInput" class="api-key-input" placeholder="AIza..." />
-    <div class="api-key-hint">
-      Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
-    </div>
+  <div class="instructions" style="margin-bottom:18px">
+    <strong>One-click bookmarklet (no API key needed)</strong>
+    <ol>
+      <li>Drag this link to your bookmarks bar: <a id="bookmarkletLink" href="#">Copilot &#8594; .md</a></li>
+      <li>Open a Copilot shared conversation in your browser</li>
+      <li>Click the bookmark and it downloads a markdown file immediately</li>
+    </ol>
+    <button class="btn-s" id="copyBookmarkletBtn" type="button">Copy bookmarklet URL</button>
+  </div>
+
+  <div class="apikey-bar">
+    <span class="apikey-label">Local conversion only</span>
+    <span class="apikey-hint">This app now runs entirely in-browser with no API key and no LLM dependency.</span>
   </div>
 
   <div class="mode-tabs">
@@ -52,12 +59,30 @@
 
   <div class="input-panel active" id="panel-html">
     <div class="instructions">
+      <strong>Fetch from shared URL</strong>
+      <ol>
+        <li>Paste a public Copilot share URL (<code>https://copilot.microsoft.com/shares/...</code>)</li>
+        <li>Click Convert and the app will try to fetch page content automatically</li>
+        <li>If browser fetch is blocked, use <code>node scripts/save-copilot-share-html.js ...</code> then Upload HTML File</li>
+      </ol>
+      <p style="margin-top:10px">Tip: the <em>Fetch URL → Download .html</em> button may fall back to proxy text in restricted browsers. For highest-fidelity saved HTML, use the CLI helper script.</p>
+    </div>
+    <label class="field-label">Copilot Share URL</label>
+    <input class="apikey-input" id="urlInput" type="url" placeholder="https://copilot.microsoft.com/shares/..." autocomplete="off" spellcheck="false" />
+    <br/>
+    <button class="convert-btn" id="convertBtnUrl" onclick="startConversion('url')">Fetch + Convert &#8594; Markdown</button>
+    <button class="btn-s" id="downloadHtmlBtn" onclick="downloadHtmlFromUrl()" style="margin-top:12px;margin-left:8px">Fetch URL &#8594; Download .html</button>
+  </div>
+
+  <div class="input-panel active" id="panel-html">
+    <div class="instructions">
       <strong>One-time setup</strong>
       <ol>
         <li>Show your bookmarks bar: <code>Ctrl+Shift+B</code></li>
         <li>Drag the blue button above to the bar</li>
         <li>Done — you only do this once</li>
       </ol>
+      <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
     </div>
     <div class="instructions">
       <strong>Every conversation</strong>
@@ -179,486 +204,10 @@
     </div>
   </div>
 
-  <div class="footer">
-    ■ Powered by Google Gemini 2.5 Flash  ·  Bookmarklet converts locally
-  </div>
+  <footer><span>&#9632;</span> Local extraction and markdown export (no LLM required)</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-  const GEMINI_MODEL = 'gemini-2.5-flash';
-  let currentMd = '', currentFilename = '', uploadedFileContent = '';
-
-  // ── Mode switching ────────────────────────────────────────────────────────────
-  function switchMode(mode, btn) {
-    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    const panels = {
-      bookmarklet: 'panelBookmarklet',
-      upload: 'panelUpload',
-      html: 'panelHtml',
-      text: 'panelText'
-    };
-    document.getElementById(panels[mode]).classList.add('active');
-  }
-
-  // ── File upload ───────────────────────────────────────────────────────────────
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('fileInput');
-
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropZone.classList.add('active');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('active');
-  });
-
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('active');
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  });
-
-  fileInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) handleFile(file);
-  });
-
-  function handleFile(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      uploadedFileContent = e.target.result;
-      document.getElementById('fileName').textContent = file.name;
-      document.getElementById('fileBadge').style.display = 'inline-block';
-    };
-    reader.readAsText(file);
-  }
-
-  function clearFile() {
-    uploadedFileContent = '';
-    fileInput.value = '';
-    document.getElementById('fileBadge').style.display = 'none';
-  }
-
-  // ── Status helpers ────────────────────────────────────────────────────────────
-  function setStep(n) {
-    for (let i = 1; i <= 4; i++) {
-      document.getElementById('step' + i).className = 'step-dot' + (i <= n ? ' done' : '');
-    }
-  }
-
-  function showStatus(msg, type) {
-    const bar = document.getElementById('statusBar');
-    bar.className = 'status-bar visible' + (type === 'error' ? ' error' : '');
-    document.getElementById('statusMsg').textContent = msg;
-    document.getElementById('statusLbl').textContent = type === 'error' ? 'Error' : 'Processing';
-  }
-
-  function hideStatus() {
-    document.getElementById('statusBar').className = 'status-bar';
-  }
-
-  // ── HTML turn extraction (UPDATED with new Copilot selectors) ────────────────
-  function extractTurnsFromHtml(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    // Remove screen-reader-only elements
-    doc.querySelectorAll('[class*="sr-only"]').forEach(el => el.remove());
-    
-    // Helper to extract text from nodes
-    function getNodeText(node) {
-      let out = '';
-      for (const child of node.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          out += child.textContent;
-        } else if (child.nodeType === Node.ELEMENT_NODE) {
-          const tag = child.tagName.toLowerCase();
-          if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
-          if (tag === 'pre') {
-            out += '\n```\n' + child.textContent + '\n```\n';
-          } else if (tag === 'br') {
-            out += '\n';
-          } else {
-            out += getNodeText(child);
-          }
-        }
-      }
-      return out;
-    }
-    
-    // Get user and AI elements with NEW selectors
-    const userEls = Array.from(doc.querySelectorAll('[class*="group/user-message"]'));
-    const aiEls = Array.from(doc.querySelectorAll('[class*="group/ai-message-item"]'));
-    
-    // Combine and sort by DOM position
-    const all = [
-      ...userEls.map(el => ({ el, role: 'User' })),
-      ...aiEls.map(el => ({ el, role: 'Copilot' }))
-    ];
-    
-    all.sort((a, b) => {
-      const rel = a.el.compareDocumentPosition(b.el);
-      if (rel & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (rel & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
-    });
-    
-    const turns = [];
-    for (const { el, role } of all) {
-      const text = getNodeText(el).trim();
-      if (text.length > 0) turns.push({ role, text });
-    }
-    return turns;
-  }
-
-  // ── Plain text turn extraction ───────────────────────────────────────────────
-  function extractTurnsFromPlainText(text) {
-    const turns = [];
-    const lines = text.split('\n');
-    
-    let currentRole = null;
-    let currentText = [];
-    
-    for (let line of lines) {
-      line = line.trim();
-      
-      // Skip empty lines
-      if (!line) {
-        if (currentText.length > 0) {
-          currentText.push('');
-        }
-        continue;
-      }
-      
-      // Detect role indicators
-      const lowerLine = line.toLowerCase();
-      
-      // Check for user indicators
-      if (lowerLine === 'you' || lowerLine === 'user' || lowerLine.startsWith('you:') || lowerLine.startsWith('user:')) {
-        // Save previous turn
-        if (currentRole && currentText.length > 0) {
-          turns.push({
-            role: currentRole,
-            text: currentText.join('\n').trim()
-          });
-        }
-        currentRole = 'User';
-        currentText = [];
-        // If there's text after the colon, add it
-        const colonIndex = line.indexOf(':');
-        if (colonIndex !== -1 && colonIndex < line.length - 1) {
-          currentText.push(line.substring(colonIndex + 1).trim());
-        }
-        continue;
-      }
-      
-      // Check for Copilot indicators
-      if (lowerLine === 'copilot' || lowerLine === 'assistant' || lowerLine === 'ai' || 
-          lowerLine.startsWith('copilot:') || lowerLine.startsWith('assistant:') || lowerLine.startsWith('ai:')) {
-        // Save previous turn
-        if (currentRole && currentText.length > 0) {
-          turns.push({
-            role: currentRole,
-            text: currentText.join('\n').trim()
-          });
-        }
-        currentRole = 'Copilot';
-        currentText = [];
-        // If there's text after the colon, add it
-        const colonIndex = line.indexOf(':');
-        if (colonIndex !== -1 && colonIndex < line.length - 1) {
-          currentText.push(line.substring(colonIndex + 1).trim());
-        }
-        continue;
-      }
-      
-      // Regular content line
-      if (currentRole === null) {
-        // First content without a role marker - assume it's User
-        currentRole = 'User';
-      }
-      currentText.push(line);
-    }
-    
-    // Save last turn
-    if (currentRole && currentText.length > 0) {
-      turns.push({
-        role: currentRole,
-        text: currentText.join('\n').trim()
-      });
-    }
-    
-    return turns;
-  }
-
-  // ── Format turns to Markdown ──────────────────────────────────────────────────
-  function formatTurnsToMarkdown(turns) {
-    const today = new Date().toISOString().slice(0, 10);
-    
-    let markdown = `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n`;
-    
-    turns.forEach((turn, index) => {
-      markdown += `## ${turn.role}\n\n${turn.text}\n\n`;
-      
-      // Add separator between turns (but not after the last one)
-      if (index < turns.length - 1) {
-        markdown += `---\n\n`;
-      }
-    });
-    
-    return markdown;
-  }
-
-  // ── Text cleanup ──────────────────────────────────────────────────────────────
-  function cleanSpacing(md) {
-    return md
-      .replace(/\n{4,}/g, '\n\n\n')
-      .replace(/^[\s\n]+|[\s\n]+$/g, '')
-      .replace(/```(\w+)\n+/g, '```$1\n')
-      .replace(/\n+```/g, '\n```')
-      .trim() + '\n';
-  }
-
-  // ── Main conversion ───────────────────────────────────────────────────────────
-  async function startConversion(mode) {
-    let rawInput;
-    if (mode === 'upload') {
-      if (!uploadedFileContent) { showStatus('No file loaded — please upload an HTML file first.', 'error'); return; }
-      rawInput = uploadedFileContent;
-    } else {
-      rawInput = mode === 'html'
-        ? document.getElementById('htmlInput').value.trim()
-        : document.getElementById('textInput').value.trim();
-    }
-
-    if (!rawInput) { showStatus('Nothing to convert — please provide some content first.', 'error'); return; }
-    if (rawInput.length < 100) { showStatus('Content looks too short. Make sure you have the full page.', 'error'); return; }
-
-    ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.disabled = true;
-    });
-    document.getElementById('outputSection').className = 'output-section';
-    document.getElementById('convertedBadge').textContent = '\u2713 Converted';
-    document.getElementById('convertedBadge').className = 'badge ok';
-    setStep(1);
-    showStatus('Parsing input...');
-
-    const today = new Date().toISOString().slice(0, 10);
-    let turns = [];
-
-    try {
-      if (mode === 'text') {
-        setStep(2);
-        showStatus('Extracting conversation turns from text...');
-        turns = extractTurnsFromPlainText(rawInput);
-      } else {
-        // HTML mode
-        setStep(2);
-        showStatus('Extracting conversation turns from HTML...');
-        turns = extractTurnsFromHtml(rawInput);
-      }
-
-      if (turns.length === 0) {
-        showStatus('Could not detect conversation turns. Trying AI extraction...', 'error');
-        
-        // Fallback to Gemini API
-        const apiKey = document.getElementById('apiKeyInput').value.trim();
-        if (!apiKey) { 
-          showStatus('No turns detected and no API key provided. Please enter a Gemini API key.', 'error'); 
-          return; 
-        }
-        
-        // Use original Gemini-based extraction
-        await geminiConversion(mode, rawInput, apiKey);
-        return;
-      }
-
-      // We have turns! Format them directly
-      setStep(3);
-      showStatus('Formatting as Markdown...');
-      
-      currentMd = cleanSpacing(formatTurnsToMarkdown(turns));
-      currentFilename = 'copilot-chat-' + today + '.md';
-      
-      setStep(4);
-      renderOutput(currentMd);
-      hideStatus();
-
-    } catch (err) {
-      showStatus('Failed: ' + err.message, 'error');
-      console.error(err);
-    } finally {
-      ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.disabled = false;
-      });
-    }
-  }
-
-  // ── Fallback: Gemini-based conversion ─────────────────────────────────────────
-  async function geminiConversion(mode, rawInput, apiKey) {
-    const today = new Date().toISOString().slice(0, 10);
-    let prompt;
-
-    if (mode === 'html' || mode === 'upload') {
-      prompt =
-        'You will receive HTML from a Microsoft Copilot conversation page.\n\n' +
-        'CRITICAL RULES:\n' +
-        '1. Extract every word of visible text. DO NOT summarise or omit anything.\n' +
-        '2. Copy all text VERBATIM — every sentence, every word, unchanged.\n' +
-        '3. Only apply Markdown formatting structure.\n' +
-        '4. Remove only pure UI chrome: Copy/Like/Regenerate/Share buttons, nav, cookie banners.\n\n' +
-        'Output format:\n---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-        '## User / ## Copilot for each turn. Turns separated by ---. Code in fenced blocks with language tags.\n' +
-        'Blank line before and after every heading and code fence.\n' +
-        'Output ONLY markdown. No preamble.\n\nHTML:\n\n' + rawInput.slice(0, 120000);
-    } else {
-      prompt =
-        'Below is plain text from a Microsoft Copilot conversation.\n\n' +
-        'Your ONLY job is to apply clean Markdown formatting:\n' +
-        '1. COPY ALL TEXT EXACTLY — do not change, summarise, or omit a single word.\n' +
-        '2. Label turns ## User and ## Copilot\n' +
-        '3. Separate turns with --- (horizontal rule).\n' +
-        '4. Wrap code in fenced ``` blocks with language tags.\n' +
-        '5. Ensure a blank line before AND after every heading and code fence.\n' +
-        '6. Apply headings, bold, lists where visible in the text.\n' +
-        '7. Remove only UI chrome: Copy/Regenerate/Like, navigation.\n' +
-        '8. Start with:\n---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
-        'Output ONLY markdown.\n\nTEXT:\n\n' + rawInput.slice(0, 120000);
-    }
-
-    setStep(3);
-    showStatus('Sending to Gemini for formatting...');
-
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-      GEMINI_MODEL + ':generateContent?key=' + apiKey;
-    const body = JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.0 }
-    });
-
-    const MAX_RETRIES = 4;
-    const BASE_MS = 8000;
-
-    try {
-      let data;
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body
-        });
-
-        if (res.status === 429) {
-          if (attempt === MAX_RETRIES) throw new Error('Rate limit persists. Wait ~60s then try again.');
-          const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
-          const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_MS * Math.pow(2, attempt - 1);
-          showStatus('Rate limit — retrying in ' + Math.round(waitMs / 1000) + 's... (' + attempt + '/' + MAX_RETRIES + ')');
-          await new Promise(r => setTimeout(r, waitMs));
-          showStatus('Sending to Gemini for formatting...');
-          continue;
-        }
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          const msg = (err.error && err.error.message) || ('API error ' + res.status);
-          throw new Error(res.status === 403 ? 'Invalid API key — check your Gemini key.' : msg);
-        }
-
-        data = await res.json();
-        break;
-      }
-
-      const raw = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
-        ? data.candidates[0].content.parts.map(p => p.text || '').join('\n')
-        : '';
-
-      if (!raw.trim()) throw new Error('Gemini returned an empty response. Please try again.');
-
-      setStep(4);
-      currentMd = cleanSpacing(raw);
-      currentFilename = 'copilot-chat-' + today + '.md';
-      renderOutput(currentMd);
-      hideStatus();
-
-    } catch (err) {
-      showStatus('Failed: ' + err.message, 'error');
-      console.error(err);
-    }
-  }
-
-  // ── Render output ─────────────────────────────────────────────────────────────
-  function renderOutput(md) {
-    document.getElementById('mdOut').value = md;
-    updateCharLine();
-    if (typeof marked !== 'undefined') {
-      marked.setOptions({ breaks: false, gfm: true });
-      document.getElementById('mdPreview').innerHTML = marked.parse(md);
-    }
-    document.getElementById('charBadge').textContent = md.length.toLocaleString() + ' chars';
-    document.getElementById('outputSection').className = 'output-section visible';
-    document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function updateCharLine() {
-    const v = document.getElementById('mdOut').value;
-    document.getElementById('charLine').textContent =
-      v.length.toLocaleString() + ' characters \u00b7 ' + v.split('\n').length.toLocaleString() + ' lines';
-  }
-
-  document.getElementById('mdOut').addEventListener('input', function () {
-    currentMd = this.value;
-    updateCharLine();
-    if (document.getElementById('panePreview').classList.contains('active') && typeof marked !== 'undefined')
-      document.getElementById('mdPreview').innerHTML = marked.parse(currentMd);
-  });
-
-  function switchOutTab(tab, btn) {
-    document.querySelectorAll('.out-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.out-pane').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(tab === 'raw' ? 'paneRaw' : 'panePreview').classList.add('active');
-    if (tab === 'preview' && typeof marked !== 'undefined') {
-      marked.setOptions({ breaks: false, gfm: true });
-      document.getElementById('mdPreview').innerHTML = marked.parse(currentMd);
-    }
-  }
-
-  function downloadMd() {
-    const blob = new Blob([document.getElementById('mdOut').value], { type: 'text/markdown;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = currentFilename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  async function copyMd() {
-    try {
-      await navigator.clipboard.writeText(document.getElementById('mdOut').value);
-      const btn = event.target, o = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = o, 1500);
-    } catch { document.getElementById('mdOut').select(); document.execCommand('copy'); }
-  }
-
-  function resetAll() {
-    document.getElementById('htmlInput').value = '';
-    document.getElementById('textInput').value = '';
-    clearFile();
-    document.getElementById('outputSection').className = 'output-section';
-    document.getElementById('convertedBadge').textContent = '\u2713 Converted';
-    document.getElementById('convertedBadge').className = 'badge ok';
-    hideStatus();
-    currentMd = '';
-  }
-</script>
-
 </body>
 </html>
