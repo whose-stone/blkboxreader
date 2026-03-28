@@ -192,13 +192,59 @@
 
   function buildMarkdownFromTurns(turns, today) {
     const body = turns
-      .map(t => `**${t.role === 'USER' ? 'User' : 'Copilot'}:**\n\n${t.text}`)
+      .map(t => `**${t.role === 'USER' ? 'User' : 'Copilot'}:**\n\n${prettifyBlobText(t.text)}`)
       .join('\n\n---\n\n');
     return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${body}\n`;
   }
 
   function buildMarkdownFromPlainText(text, today) {
-    return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${text.trim()}\n`;
+    return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${prettifyBlobText(text)}\n`;
+  }
+
+  function prettifyBlobText(input) {
+    const source = String(input || '').trim();
+    if (!source) return '';
+    if (source.includes('```')) return source;
+
+    let text = source.replace(/\s+/g, ' ').trim();
+
+    const sectionPatterns = [
+      /Bold summary:/gi,
+      /Quick decision table[^:]*:/gi,
+      /Recommended hardware[^:]*:/gi,
+      /Software stack[^:]*:/gi,
+      /Network & router setup[^:]*:/gi,
+      /Admin features[^:]*:/gi,
+      /Risks, tradeoffs & next steps:?/gi,
+      /Next steps[^:]*:/gi
+    ];
+
+    for (const re of sectionPatterns) {
+      text = text.replace(re, (m) => `\n\n## ${m.replace(/:$/, '').trim()}\n\n`);
+    }
+
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+
+    const blocks = text.split(/\n\n+/).map(b => b.trim()).filter(Boolean);
+    const out = [];
+
+    for (const block of blocks) {
+      if (block.startsWith('## ')) {
+        out.push(block);
+        continue;
+      }
+
+      const sentences = block.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).filter(Boolean);
+      if (sentences.length <= 2) {
+        out.push(sentences.join(' '));
+      } else {
+        for (let i = 0; i < sentences.length; i += 2) {
+          out.push(sentences.slice(i, i + 2).join(' '));
+        }
+      }
+    }
+
+    return out.join('\n\n');
   }
 
   async function downloadHtmlFromUrl() {
@@ -391,26 +437,22 @@
   }
 
   function initBookmarkletUi() {
-    const link = document.getElementById('bookmarkletLink');
-    const copyBtn = document.getElementById('copyBookmarkletBtn');
-    if (!link) return;
+    const installBtn = document.getElementById('installBookmarkletBtn');
+    if (!installBtn) return;
 
     const payload = getBookmarkletPayload();
-    link.setAttribute('href', 'javascript:' + payload);
+    const txt = 'javascript:' + payload;
 
-    if (copyBtn) {
-      copyBtn.addEventListener('click', async () => {
-        const txt = 'javascript:' + payload;
-        try {
-          await navigator.clipboard.writeText(txt);
-          const old = copyBtn.textContent;
-          copyBtn.textContent = 'Copied!';
-          setTimeout(() => (copyBtn.textContent = old), 1500);
-        } catch {
-          showStatus('Could not copy bookmarklet automatically. Drag the bookmark link manually.', 'error');
-        }
-      });
-    }
+    installBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(txt);
+        const old = installBtn.textContent;
+        installBtn.textContent = 'Copied! Paste into a bookmark URL';
+        setTimeout(() => (installBtn.textContent = old), 1800);
+      } catch {
+        showStatus('Could not copy bookmarklet automatically. Copy it from page source if needed.', 'error');
+      }
+    });
   }
 
   initBookmarkletUi();

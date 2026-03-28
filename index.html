@@ -21,11 +21,11 @@
   <div class="instructions" style="margin-bottom:18px">
     <strong>One-click bookmarklet (no API key needed)</strong>
     <ol>
-      <li>Drag this link to your bookmarks bar: <a id="bookmarkletLink" href="#">Copilot &#8594; .md</a></li>
+      <li>Click <strong>Create Bookmarklet</strong> to copy the bookmarklet URL</li>
       <li>Open a Copilot shared conversation in your browser</li>
       <li>Click the bookmark and it downloads a markdown file immediately</li>
     </ol>
-    <button class="btn-s" id="copyBookmarkletBtn" type="button">Copy bookmarklet URL</button>
+    <button class="btn-s" id="installBookmarkletBtn" type="button">Create Bookmarklet</button>
   </div>
 
   <div class="apikey-bar">
@@ -92,21 +92,6 @@
         <li><code>copilot-chat-[date].md</code> downloads instantly ✓</li>
       </ol>
       <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
-    </div>
-    <div class="instructions">
-      <strong>Why a bookmarklet and not a URL field?</strong><br/>
-      Copilot share pages are rendered entirely by JavaScript — no external tool can fetch their content from a URL.
-      The bookmarklet runs inside your browser tab where the page is already live, extracts the conversation text,
-      formats it as Markdown, and downloads the file. No server, no API key, no intermediate steps.
-    </div>
-  </div>
-
-  <!-- Upload Panel -->
-  <div id="panelUpload" class="input-panel">
-    <div class="instructions">
-      <strong>Upload a Ctrl+S saved HTML file</strong>
-      Open the Copilot share page, press <code>Ctrl+S</code>, save as <code>Webpage, Complete</code>, then upload the file below.
-      Requires a Gemini API key.
     </div>
     <label class="field-label">HTML File</label>
     <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
