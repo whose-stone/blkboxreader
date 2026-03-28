@@ -5,544 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Copilot → Markdown</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    --bg: #0d0d0f;
-    --surface: #141416;
-    --surface2: #1c1c20;
-    --border: #2a2a30;
-    --accent: #00e5a0;
-    --accent-dim: rgba(0,229,160,0.10);
-    --accent-glow: rgba(0,229,160,0.22);
-    --text: #e8e8ec;
-    --text-muted: #6b6b78;
-    --text-dim: #3a3a42;
-    --red: #ff4d6d;
-    --blue: #4db8ff;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'IBM Plex Sans', sans-serif;
-  }
+<link rel="stylesheet" href="styles.css" />
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,229,160,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,229,160,0.025) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    position: relative;
-    z-index: 1;
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 48px 24px 80px;
-    width: 100%;
-  }
-
-  header { margin-bottom: 48px; }
-
-  .eyebrow {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-weight: 500;
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .eyebrow::before {
-    content: '';
-    display: inline-block;
-    width: 18px; height: 1px;
-    background: var(--accent);
-  }
-
-  h1 {
-    font-family: var(--mono);
-    font-size: clamp(26px, 5vw, 44px);
-    font-weight: 600;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    margin-bottom: 14px;
-  }
-  h1 span { color: var(--accent); }
-
-  .subtitle {
-    font-family: var(--sans);
-    font-size: 14px;
-    color: var(--text-muted);
-    font-weight: 300;
-    line-height: 1.6;
-    max-width: 520px;
-  }
-
-  .mode-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 24px;
-    border: 1px solid var(--border);
-    width: fit-content;
-    flex-wrap: wrap;
-  }
-
-  .mode-tab {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 10px 18px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .mode-tab + .mode-tab { border-left: 1px solid var(--border); }
-  .mode-tab.active { background: var(--accent-dim); color: var(--accent); }
-  .mode-tab.tab-bookmarklet.active { background: rgba(77,184,255,0.12); color: var(--blue); }
-  .mode-tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
-
-  .input-panel { display: none; }
-  .input-panel.active { display: block; }
-
-  .field-label {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-    display: block;
-  }
-
-  .paste-area {
-    width: 100%;
-    height: 200px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.6;
-    padding: 16px 18px;
-    outline: none;
-    resize: vertical;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .paste-area::placeholder { color: var(--text-dim); font-size: 12px; }
-  .paste-area:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-
-  .instructions {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    padding: 16px 20px;
-    margin-bottom: 20px;
-    font-family: var(--sans);
-    font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.6;
-  }
-  .instructions.blue-border { border-left-color: var(--blue); }
-  .instructions strong {
-    color: var(--text);
-    font-weight: 500;
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.05em;
-    display: block;
-    margin-bottom: 8px;
-  }
-  .instructions ol { margin-top: 4px; padding-left: 20px; }
-  .instructions li { margin-bottom: 4px; }
-  .instructions code {
-    font-family: var(--mono);
-    font-size: 11px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 1px 6px;
-    color: var(--accent);
-  }
-
-  .convert-btn {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 13px 26px;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-    white-space: nowrap;
-    margin-top: 12px;
-  }
-  .convert-btn:hover:not(:disabled) {
-    background: #1affc0;
-    box-shadow: 0 0 24px var(--accent-glow);
-  }
-  .convert-btn:active:not(:disabled) { transform: scale(0.97); }
-  .convert-btn:disabled {
-    background: var(--surface2);
-    color: var(--text-dim);
-    cursor: not-allowed;
-  }
-
-  .status-bar {
-    display: none;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    padding: 16px 20px;
-    margin-top: 20px;
-  }
-  .status-bar.visible { display: block; }
-  .status-bar.error { border-top-color: var(--red); }
-
-  .status-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .status-lbl {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .status-msg {
-    font-family: var(--sans);
-    font-size: 13px;
-    color: var(--text);
-  }
-
-  .step-progress {
-    display: flex;
-    gap: 6px;
-    margin-top: 14px;
-  }
-
-  .step-dot {
-    width: 8px; height: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-  }
-  .step-dot.done { background: var(--accent); border-color: var(--accent); }
-
-  .output-section {
-    display: none;
-    margin-top: 40px;
-  }
-  .output-section.visible { display: block; }
-
-  .output-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .output-title {
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .badge {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text-dim);
-  }
-  .badge.ok { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-
-  .output-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .action-btn {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 8px 14px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .action-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: 0 0 12px var(--accent-dim);
-  }
-
-  .out-tabs {
-    display: flex;
-    gap: 0;
-    border: 1px solid var(--border);
-    width: fit-content;
-    margin-bottom: 14px;
-  }
-
-  .out-tab {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 8px 16px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .out-tab + .out-tab { border-left: 1px solid var(--border); }
-  .out-tab.active { background: var(--accent-dim); color: var(--accent); }
-  .out-tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
-
-  .out-pane { display: none; }
-  .out-pane.active { display: block; }
-
-  .md-editor {
-    width: 100%;
-    min-height: 400px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.7;
-    padding: 20px;
-    outline: none;
-    resize: vertical;
-    transition: border-color 0.2s;
-  }
-  .md-editor:focus { border-color: var(--accent); }
-
-  .md-preview {
-    min-height: 400px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 24px;
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--text);
-    overflow-x: auto;
-  }
-  .md-preview h1, .md-preview h2, .md-preview h3 {
-    font-family: var(--mono);
-    margin-top: 1.5em;
-    margin-bottom: 0.6em;
-    color: var(--accent);
-  }
-  .md-preview h1 { font-size: 24px; }
-  .md-preview h2 { font-size: 18px; }
-  .md-preview h3 { font-size: 15px; }
-  .md-preview p { margin-bottom: 1em; }
-  .md-preview code {
-    font-family: var(--mono);
-    font-size: 11px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 2px 6px;
-    color: var(--accent);
-  }
-  .md-preview pre {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 16px;
-    overflow-x: auto;
-    margin: 1em 0;
-  }
-  .md-preview pre code {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--text);
-  }
-  .md-preview hr {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 2em 0;
-  }
-  .md-preview strong { color: var(--accent); font-weight: 500; }
-  .md-preview ul, .md-preview ol { padding-left: 24px; margin-bottom: 1em; }
-  .md-preview li { margin-bottom: 0.4em; }
-
-  .char-line {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-    text-align: right;
-    margin-top: 8px;
-  }
-
-  .footer {
-    margin-top: auto;
-    padding: 32px 0;
-    text-align: center;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--text-dim);
-    border-top: 1px solid var(--border);
-  }
-  .footer a {
-    color: var(--accent);
-    text-decoration: none;
-    transition: color 0.15s;
-  }
-  .footer a:hover { color: #1affc0; }
-
-  .drop-zone {
-    position: relative;
-    border: 2px dashed var(--border);
-    background: var(--surface);
-    padding: 32px;
-    text-align: center;
-    transition: all 0.2s;
-    cursor: pointer;
-  }
-  .drop-zone.active {
-    border-color: var(--accent);
-    background: var(--accent-dim);
-  }
-  .drop-zone-label {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-    font-family: var(--sans);
-  }
-  .drop-zone-hint {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .file-input { display: none; }
-  .file-badge {
-    display: inline-block;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    font-size: 11px;
-    margin-top: 12px;
-    color: var(--text);
-  }
-  .file-badge .remove {
-    margin-left: 12px;
-    color: var(--red);
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .file-badge .remove:hover { color: #ff6b85; }
-
-  .api-key-row {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 16px 20px;
-    margin-bottom: 24px;
-  }
-  .api-key-label {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-    display: block;
-  }
-  .api-key-input {
-    width: 100%;
-    max-width: 500px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .api-key-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-  .api-key-hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 6px;
-    font-family: var(--sans);
-  }
-  .api-key-hint a {
-    color: var(--accent);
-    text-decoration: none;
-  }
-  .api-key-hint a:hover { text-decoration: underline; }
-
-  .bookmarklet-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--blue);
-    color: #000;
-    text-decoration: none;
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    padding: 12px 20px;
-    margin: 16px 0;
-    transition: all 0.15s;
-    border: 2px solid var(--blue);
-  }
-  .bookmarklet-link:hover {
-    background: #6bc5ff;
-    border-color: #6bc5ff;
-    box-shadow: 0 0 20px rgba(77,184,255,0.3);
-  }
-  .bookmarklet-icon {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-  }
-</style>
 </head>
 <body>
 <div class="container">
@@ -563,25 +27,30 @@
   </div>
 
   <div class="mode-tabs">
-    <button class="mode-tab tab-bookmarklet active" onclick="switchMode('bookmarklet', this)">&#9733; Bookmarklet</button>
-    <button class="mode-tab" onclick="switchMode('upload', this)">Upload HTML File</button>
-    <button class="mode-tab" onclick="switchMode('html', this)">Paste HTML Source</button>
-    <button class="mode-tab" onclick="switchMode('text', this)">Paste Plain Text</button>
+    <button class="mode-tab" onclick="setMode('url', this)">Paste Share URL</button>
+    <button class="mode-tab active" onclick="setMode('html', this)">Paste HTML Source</button>
+    <button class="mode-tab" onclick="setMode('upload', this)">Upload HTML File</button>
+    <button class="mode-tab" onclick="setMode('text', this)">Paste Plain Text</button>
   </div>
 
-  <!-- Bookmarklet Panel -->
-  <div id="panelBookmarklet" class="input-panel active">
-    <div class="instructions blue-border">
-      <strong>Step 1 — One-time setup</strong>
-      <a href="javascript:(function(){ document.querySelectorAll('[class*=&quot;sr-only&quot;]').forEach(el=>el.remove()); const u=Array.from(document.querySelectorAll('[class*=&quot;group/user-message&quot;]')); const a=Array.from(document.querySelectorAll('[class*=&quot;group/ai-message-item&quot;]')); if(!u.length&&!a.length){alert('No conversation found on this page.');return;} function getText(n){let o='';for(const c of n.childNodes){if(c.nodeType===Node.TEXT_NODE){o+=c.textContent;}else if(c.nodeType===Node.ELEMENT_NODE){const t=c.tagName.toLowerCase();if(t==='script'||t==='style'||t==='noscript')continue;if(t==='pre'){o+='\n```\n'+c.textContent+'\n```\n';}else if(t==='br'){o+='\n';}else{o+=getText(c);}}}return o;} const all=[...u.map(el=>({el,role:'User'})),...a.map(el=>({el,role:'Copilot'}))]; all.sort((a,b)=>{const rel=a.el.compareDocumentPosition(b.el);if(rel&Node.DOCUMENT_POSITION_FOLLOWING)return-1;if(rel&Node.DOCUMENT_POSITION_PRECEDING)return 1;return 0;}); const turns=[];for(const{el,role}of all){const text=getText(el).trim();if(text)turns.push({role,text});} if(!turns.length){alert('Could not extract conversation turns.');return;} const today=new Date().toISOString().slice(0,10); const md=`---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n`+turns.map(t=>`## ${t.role}\n\n${t.text}`).join('\n\n---\n\n'); const blob=new Blob([md],{type:'text/markdown;charset=utf-8'}); const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`copilot-chat-${today}.md`; link.click(); URL.revokeObjectURL(link.href); })();" class="bookmarklet-link">
-        <svg class="bookmarklet-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor"/>
-        </svg>
-        Export Chat
-      </a>
-      <div style="margin-top: 8px;">↑ Drag this button to your browser's bookmarks bar</div>
-      <div style="margin-top: 12px; font-size: 12px; color: var(--text-dim);">● Downloads .md directly — no upload, no API key</div>
+  <div class="input-panel" id="panel-url">
+    <div class="instructions">
+      <strong>Fetch from shared URL</strong>
+      <ol>
+        <li>Paste a public Copilot share URL (<code>https://copilot.microsoft.com/shares/...</code>)</li>
+        <li>Click Convert and the app will try to fetch page content automatically</li>
+        <li>If browser fetch is blocked, use <code>node scripts/save-copilot-share-html.js ...</code> then Upload HTML File</li>
+      </ol>
+      <p style="margin-top:10px">Tip: the <em>Fetch URL → Download .html</em> button may fall back to proxy text in restricted browsers. For highest-fidelity saved HTML, use the CLI helper script.</p>
     </div>
+    <label class="field-label">Copilot Share URL</label>
+    <input class="apikey-input" id="urlInput" type="url" placeholder="https://copilot.microsoft.com/shares/..." autocomplete="off" spellcheck="false" />
+    <br/>
+    <button class="convert-btn" id="convertBtnUrl" onclick="startConversion('url')">Fetch + Convert &#8594; Markdown</button>
+    <button class="btn-s" id="downloadHtmlBtn" onclick="downloadHtmlFromUrl()" style="margin-top:12px;margin-left:8px">Fetch URL &#8594; Download .html</button>
+  </div>
+
+  <div class="input-panel active" id="panel-html">
     <div class="instructions">
       <strong>One-time setup</strong>
       <ol>
@@ -597,6 +66,7 @@
         <li>Click <strong>Export Chat</strong> in your bookmarks bar</li>
         <li><code>copilot-chat-[date].md</code> downloads instantly ✓</li>
       </ol>
+      <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
     </div>
     <div class="instructions">
       <strong>Why a bookmarklet and not a URL field?</strong><br/>
@@ -684,10 +154,16 @@
         <span id="convertedBadge" class="badge ok">✓ Converted</span>
         <span id="charBadge" class="badge">—</span>
       </div>
+      <div class="out-actions">
+        <button class="btn-s" onclick="copyMd(event)">Copy</button>
+        <button class="btn-s" onclick="resetAll()">New</button>
+        <button class="btn-dl" onclick="downloadMd()">&#8595; Download .md</button>
+
       <div class="output-actions">
         <button class="action-btn" onclick="copyMd()">Copy</button>
         <button class="action-btn" onclick="resetAll()">New</button>
         <button class="action-btn" onclick="downloadMd()">↓ Download .md</button>
+
       </div>
     </div>
     <div class="out-tabs">
@@ -708,6 +184,8 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
   const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -1181,5 +659,6 @@
     currentMd = '';
   }
 </script>
+
 </body>
 </html>
