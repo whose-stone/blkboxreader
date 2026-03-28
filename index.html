@@ -3,25 +3,27 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Copilot &#8594; Markdown</title>
+<title>Copilot → Markdown</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 
 </head>
 <body>
 <div class="container">
-
   <header>
     <div class="eyebrow">Converter Tool</div>
-    <h1>Copilot Chat<br/><span>&#8594; Markdown</span></h1>
-    <p class="subtitle">Extract the full text of a Microsoft Copilot shared conversation and export it as a clean, structured Markdown file.</p>
+    <h1>Copilot Chat <span>→</span> Markdown</h1>
+    <div class="subtitle">
+      Extract the full text of a Microsoft Copilot shared conversation and export it as a clean, structured Markdown file.
+    </div>
   </header>
 
-  <div class="apikey-bar">
-    <span class="apikey-label">Gemini API Key</span>
-    <input class="apikey-input" id="apiKeyInput" type="password"
-      placeholder="GEMINI_API_KEY &#8212; paste your key here" autocomplete="off" spellcheck="false" />
-    <span class="apikey-hint">Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a></span>
+  <div class="api-key-row">
+    <label class="api-key-label">Gemini API Key</label>
+    <input type="text" id="apiKeyInput" class="api-key-input" placeholder="AIza..." />
+    <div class="api-key-hint">
+      Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
+    </div>
   </div>
 
   <div class="mode-tabs">
@@ -50,106 +52,613 @@
 
   <div class="input-panel active" id="panel-html">
     <div class="instructions">
-      <strong>How to get the HTML source</strong>
+      <strong>One-time setup</strong>
       <ol>
-        <li>Open your Copilot share link in Chrome or Edge and wait for it to fully load</li>
-        <li>Press <code>Ctrl+U</code> (Windows) or <code>&#8984;+U</code> (Mac) to open View Source in a new tab</li>
-        <li>Press <code>Ctrl+A</code> to select all, then <code>Ctrl+C</code> to copy</li>
-        <li>Paste it into the box below and click Convert</li>
+        <li>Show your bookmarks bar: <code>Ctrl+Shift+B</code></li>
+        <li>Drag the blue button above to the bar</li>
+        <li>Done — you only do this once</li>
       </ol>
     </div>
-    <label class="field-label">HTML Source</label>
-    <textarea class="paste-area" id="htmlInput" placeholder="Paste the full HTML source code of the Copilot share page here&#8230;"></textarea>
-    <br/>
-    <button class="convert-btn" id="convertBtnHtml" onclick="startConversion('html')">Convert &#8594; Markdown</button>
-  </div>
-
-  <div class="input-panel" id="panel-upload">
     <div class="instructions">
-      <strong>How to save the HTML file</strong>
+      <strong>Every conversation</strong>
       <ol>
-        <li>Open your Copilot share link in Chrome or Edge and wait for it to fully load</li>
-        <li>Press <code>Ctrl+S</code> (Windows) or <code>&#8984;+S</code> (Mac) to save the page</li>
-        <li>In the save dialog, set the format to <code>Webpage, Single File (*.mhtml)</code> or <code>Webpage, Complete (*.html)</code></li>
-        <li>Upload that file below</li>
+        <li>Open your Copilot share URL and wait for it to load</li>
+        <li>Click <strong>Export Chat</strong> in your bookmarks bar</li>
+        <li><code>copilot-chat-[date].md</code> downloads instantly ✓</li>
       </ol>
       <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
     </div>
-    <label class="field-label">HTML File</label>
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".html,.htm,.mhtml,.mht" style="display:none" onchange="handleFileSelect(this.files)"/>
-      <div class="drop-icon">&#8679;</div>
-      <div class="drop-primary">Drop your .html file here</div>
-      <div class="drop-secondary">or click to browse &#8212; accepts .html, .htm, .mhtml</div>
+    <div class="instructions">
+      <strong>Why a bookmarklet and not a URL field?</strong><br/>
+      Copilot share pages are rendered entirely by JavaScript — no external tool can fetch their content from a URL.
+      The bookmarklet runs inside your browser tab where the page is already live, extracts the conversation text,
+      formats it as Markdown, and downloads the file. No server, no API key, no intermediate steps.
     </div>
-    <div class="file-info" id="fileInfo" style="display:none">
-      <span class="file-icon">&#9672;</span>
-      <span id="fileName">&#8212;</span>
-      <span id="fileSize" class="file-size">&#8212;</span>
-      <button class="file-clear" onclick="clearFile()">&#10005; Remove</button>
-    </div>
-    <br/>
-    <button class="convert-btn" id="convertBtnUpload" onclick="startConversion('upload')">Convert &#8594; Markdown</button>
   </div>
 
-  <div class="input-panel" id="panel-text">
+  <!-- Upload Panel -->
+  <div id="panelUpload" class="input-panel">
+    <div class="instructions">
+      <strong>Upload a Ctrl+S saved HTML file</strong>
+      Open the Copilot share page, press <code>Ctrl+S</code>, save as <code>Webpage, Complete</code>, then upload the file below.
+      Requires a Gemini API key.
+    </div>
+    <label class="field-label">HTML File</label>
+    <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-zone-label">⇧</div>
+      <div class="drop-zone-label">Drop your .html file here</div>
+      <div class="drop-zone-hint">or click to browse — .html, .htm, .mhtml</div>
+    </div>
+    <input type="file" id="fileInput" class="file-input" accept=".html,.htm,.mhtml" />
+    <div id="fileBadge" class="file-badge" style="display: none;">
+      <span id="fileName">—</span>
+      <span class="remove" onclick="clearFile()">✕ Remove</span>
+    </div>
+    <button id="convertBtnUpload" class="convert-btn" onclick="startConversion('upload')">
+      Convert → Markdown
+    </button>
+  </div>
+
+  <!-- HTML Source Panel -->
+  <div id="panelHtml" class="input-panel">
+    <div class="instructions">
+      <strong>How to get the HTML source</strong>
+      <ol>
+        <li>Open your Copilot share link and wait for it to fully load</li>
+        <li>Press <code>Ctrl+U</code> to open View Source in a new tab</li>
+        <li>Press <code>Ctrl+A</code> then <code>Ctrl+C</code> to copy all</li>
+        <li>Paste below and click Convert</li>
+      </ol>
+    </div>
+    <label class="field-label">HTML Source</label>
+    <textarea id="htmlInput" class="paste-area" placeholder="<html>..."></textarea>
+    <button id="convertBtnHtml" class="convert-btn" onclick="startConversion('html')">
+      Convert → Markdown
+    </button>
+  </div>
+
+  <!-- Plain Text Panel -->
+  <div id="panelText" class="input-panel">
     <div class="instructions">
       <strong>How to get the plain text</strong>
       <ol>
-        <li>Open your Copilot share link in a browser and wait for the conversation to fully load</li>
-        <li>Click anywhere on the page, then press <code>Ctrl+A</code> to select all visible text</li>
-        <li>Press <code>Ctrl+C</code> to copy, then paste below</li>
+        <li>Open your Copilot share link and wait for it to fully load</li>
+        <li>Press <code>Ctrl+A</code> then <code>Ctrl+C</code> to copy all visible text</li>
+        <li>Paste below and click Convert</li>
       </ol>
     </div>
     <label class="field-label">Plain Text Content</label>
-    <textarea class="paste-area" id="textInput" placeholder="Paste the visible text content of the Copilot conversation here&#8230;"></textarea>
-    <br/>
-    <button class="convert-btn" id="convertBtnText" onclick="startConversion('text')">Convert &#8594; Markdown</button>
+    <textarea id="textInput" class="paste-area" placeholder="Paste copied text here..."></textarea>
+    <button id="convertBtnText" class="convert-btn" onclick="startConversion('text')">
+      Convert → Markdown
+    </button>
   </div>
 
-  <div class="status-bar" id="statusBar">
+  <div id="statusBar" class="status-bar">
     <div class="status-head">
-      <div class="spinner"></div>
-      <span class="status-lbl" id="statusLbl">Processing</span>
+      <span id="statusLbl" class="status-lbl">Processing</span>
     </div>
-    <div class="status-msg" id="statusMsg">Starting&#8230;</div>
-    <div class="steps">
-      <div class="step" id="s1"><div class="step-dot"></div>Parse HTML</div>
-      <div class="step" id="s2"><div class="step-dot"></div>Extract Turns</div>
-      <div class="step" id="s3"><div class="step-dot"></div>Format Markdown</div>
-      <div class="step" id="s4"><div class="step-dot"></div>Ready</div>
+    <div id="statusMsg" class="status-msg">Starting…</div>
+    <div class="step-progress">
+      <div id="step1" class="step-dot"></div>
+      <div id="step2" class="step-dot"></div>
+      <div id="step3" class="step-dot"></div>
+      <div id="step4" class="step-dot"></div>
     </div>
   </div>
 
-  <div class="output-section" id="outputSection">
+  <div id="outputSection" class="output-section">
     <div class="output-header">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <span class="badge ok">&#10003; Converted</span>
-        <span class="badge" id="charBadge">&#8212;</span>
+      <div class="output-title">Ready</div>
+      <div>
+        <span id="convertedBadge" class="badge ok">✓ Converted</span>
+        <span id="charBadge" class="badge">—</span>
       </div>
       <div class="out-actions">
         <button class="btn-s" onclick="copyMd(event)">Copy</button>
         <button class="btn-s" onclick="resetAll()">New</button>
         <button class="btn-dl" onclick="downloadMd()">&#8595; Download .md</button>
+
+      <div class="output-actions">
+        <button class="action-btn" onclick="copyMd()">Copy</button>
+        <button class="action-btn" onclick="resetAll()">New</button>
+        <button class="action-btn" onclick="downloadMd()">↓ Download .md</button>
+
       </div>
     </div>
     <div class="out-tabs">
-      <button class="out-tab active" onclick="switchOutTab('raw',this)">Raw Markdown</button>
-      <button class="out-tab" onclick="switchOutTab('preview',this)">Preview</button>
+      <button class="out-tab active" onclick="switchOutTab('raw', this)">Raw Markdown</button>
+      <button class="out-tab" onclick="switchOutTab('preview', this)">Preview</button>
     </div>
-    <div class="out-pane active" id="paneRaw">
-      <textarea class="md-editor" id="mdOut" spellcheck="false"></textarea>
-      <div class="char-line" id="charLine">0 chars &middot; 0 lines</div>
+    <div id="paneRaw" class="out-pane active">
+      <textarea id="mdOut" class="md-editor"></textarea>
+      <div id="charLine" class="char-line">0 chars · 0 lines</div>
     </div>
-    <div class="out-pane" id="panePreview">
-      <div class="md-preview" id="mdPreview"></div>
+    <div id="panePreview" class="out-pane">
+      <div id="mdPreview" class="md-preview"></div>
     </div>
   </div>
 
-  <footer><span>&#9632;</span> Powered by Google Gemini 2.5 Flash</footer>
+  <div class="footer">
+    ■ Powered by Google Gemini 2.5 Flash  ·  Bookmarklet converts locally
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  let currentMd = '', currentFilename = '', uploadedFileContent = '';
+
+  // ── Mode switching ────────────────────────────────────────────────────────────
+  function switchMode(mode, btn) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const panels = {
+      bookmarklet: 'panelBookmarklet',
+      upload: 'panelUpload',
+      html: 'panelHtml',
+      text: 'panelText'
+    };
+    document.getElementById(panels[mode]).classList.add('active');
+  }
+
+  // ── File upload ───────────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('active');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('active');
+  });
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+  });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      uploadedFileContent = e.target.result;
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileBadge').style.display = 'inline-block';
+    };
+    reader.readAsText(file);
+  }
+
+  function clearFile() {
+    uploadedFileContent = '';
+    fileInput.value = '';
+    document.getElementById('fileBadge').style.display = 'none';
+  }
+
+  // ── Status helpers ────────────────────────────────────────────────────────────
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('step' + i).className = 'step-dot' + (i <= n ? ' done' : '');
+    }
+  }
+
+  function showStatus(msg, type) {
+    const bar = document.getElementById('statusBar');
+    bar.className = 'status-bar visible' + (type === 'error' ? ' error' : '');
+    document.getElementById('statusMsg').textContent = msg;
+    document.getElementById('statusLbl').textContent = type === 'error' ? 'Error' : 'Processing';
+  }
+
+  function hideStatus() {
+    document.getElementById('statusBar').className = 'status-bar';
+  }
+
+  // ── HTML turn extraction (UPDATED with new Copilot selectors) ────────────────
+  function extractTurnsFromHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Remove screen-reader-only elements
+    doc.querySelectorAll('[class*="sr-only"]').forEach(el => el.remove());
+    
+    // Helper to extract text from nodes
+    function getNodeText(node) {
+      let out = '';
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out += child.textContent;
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const tag = child.tagName.toLowerCase();
+          if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
+          if (tag === 'pre') {
+            out += '\n```\n' + child.textContent + '\n```\n';
+          } else if (tag === 'br') {
+            out += '\n';
+          } else {
+            out += getNodeText(child);
+          }
+        }
+      }
+      return out;
+    }
+    
+    // Get user and AI elements with NEW selectors
+    const userEls = Array.from(doc.querySelectorAll('[class*="group/user-message"]'));
+    const aiEls = Array.from(doc.querySelectorAll('[class*="group/ai-message-item"]'));
+    
+    // Combine and sort by DOM position
+    const all = [
+      ...userEls.map(el => ({ el, role: 'User' })),
+      ...aiEls.map(el => ({ el, role: 'Copilot' }))
+    ];
+    
+    all.sort((a, b) => {
+      const rel = a.el.compareDocumentPosition(b.el);
+      if (rel & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (rel & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+    
+    const turns = [];
+    for (const { el, role } of all) {
+      const text = getNodeText(el).trim();
+      if (text.length > 0) turns.push({ role, text });
+    }
+    return turns;
+  }
+
+  // ── Plain text turn extraction ───────────────────────────────────────────────
+  function extractTurnsFromPlainText(text) {
+    const turns = [];
+    const lines = text.split('\n');
+    
+    let currentRole = null;
+    let currentText = [];
+    
+    for (let line of lines) {
+      line = line.trim();
+      
+      // Skip empty lines
+      if (!line) {
+        if (currentText.length > 0) {
+          currentText.push('');
+        }
+        continue;
+      }
+      
+      // Detect role indicators
+      const lowerLine = line.toLowerCase();
+      
+      // Check for user indicators
+      if (lowerLine === 'you' || lowerLine === 'user' || lowerLine.startsWith('you:') || lowerLine.startsWith('user:')) {
+        // Save previous turn
+        if (currentRole && currentText.length > 0) {
+          turns.push({
+            role: currentRole,
+            text: currentText.join('\n').trim()
+          });
+        }
+        currentRole = 'User';
+        currentText = [];
+        // If there's text after the colon, add it
+        const colonIndex = line.indexOf(':');
+        if (colonIndex !== -1 && colonIndex < line.length - 1) {
+          currentText.push(line.substring(colonIndex + 1).trim());
+        }
+        continue;
+      }
+      
+      // Check for Copilot indicators
+      if (lowerLine === 'copilot' || lowerLine === 'assistant' || lowerLine === 'ai' || 
+          lowerLine.startsWith('copilot:') || lowerLine.startsWith('assistant:') || lowerLine.startsWith('ai:')) {
+        // Save previous turn
+        if (currentRole && currentText.length > 0) {
+          turns.push({
+            role: currentRole,
+            text: currentText.join('\n').trim()
+          });
+        }
+        currentRole = 'Copilot';
+        currentText = [];
+        // If there's text after the colon, add it
+        const colonIndex = line.indexOf(':');
+        if (colonIndex !== -1 && colonIndex < line.length - 1) {
+          currentText.push(line.substring(colonIndex + 1).trim());
+        }
+        continue;
+      }
+      
+      // Regular content line
+      if (currentRole === null) {
+        // First content without a role marker - assume it's User
+        currentRole = 'User';
+      }
+      currentText.push(line);
+    }
+    
+    // Save last turn
+    if (currentRole && currentText.length > 0) {
+      turns.push({
+        role: currentRole,
+        text: currentText.join('\n').trim()
+      });
+    }
+    
+    return turns;
+  }
+
+  // ── Format turns to Markdown ──────────────────────────────────────────────────
+  function formatTurnsToMarkdown(turns) {
+    const today = new Date().toISOString().slice(0, 10);
+    
+    let markdown = `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n`;
+    
+    turns.forEach((turn, index) => {
+      markdown += `## ${turn.role}\n\n${turn.text}\n\n`;
+      
+      // Add separator between turns (but not after the last one)
+      if (index < turns.length - 1) {
+        markdown += `---\n\n`;
+      }
+    });
+    
+    return markdown;
+  }
+
+  // ── Text cleanup ──────────────────────────────────────────────────────────────
+  function cleanSpacing(md) {
+    return md
+      .replace(/\n{4,}/g, '\n\n\n')
+      .replace(/^[\s\n]+|[\s\n]+$/g, '')
+      .replace(/```(\w+)\n+/g, '```$1\n')
+      .replace(/\n+```/g, '\n```')
+      .trim() + '\n';
+  }
+
+  // ── Main conversion ───────────────────────────────────────────────────────────
+  async function startConversion(mode) {
+    let rawInput;
+    if (mode === 'upload') {
+      if (!uploadedFileContent) { showStatus('No file loaded — please upload an HTML file first.', 'error'); return; }
+      rawInput = uploadedFileContent;
+    } else {
+      rawInput = mode === 'html'
+        ? document.getElementById('htmlInput').value.trim()
+        : document.getElementById('textInput').value.trim();
+    }
+
+    if (!rawInput) { showStatus('Nothing to convert — please provide some content first.', 'error'); return; }
+    if (rawInput.length < 100) { showStatus('Content looks too short. Make sure you have the full page.', 'error'); return; }
+
+    ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.disabled = true;
+    });
+    document.getElementById('outputSection').className = 'output-section';
+    document.getElementById('convertedBadge').textContent = '\u2713 Converted';
+    document.getElementById('convertedBadge').className = 'badge ok';
+    setStep(1);
+    showStatus('Parsing input...');
+
+    const today = new Date().toISOString().slice(0, 10);
+    let turns = [];
+
+    try {
+      if (mode === 'text') {
+        setStep(2);
+        showStatus('Extracting conversation turns from text...');
+        turns = extractTurnsFromPlainText(rawInput);
+      } else {
+        // HTML mode
+        setStep(2);
+        showStatus('Extracting conversation turns from HTML...');
+        turns = extractTurnsFromHtml(rawInput);
+      }
+
+      if (turns.length === 0) {
+        showStatus('Could not detect conversation turns. Trying AI extraction...', 'error');
+        
+        // Fallback to Gemini API
+        const apiKey = document.getElementById('apiKeyInput').value.trim();
+        if (!apiKey) { 
+          showStatus('No turns detected and no API key provided. Please enter a Gemini API key.', 'error'); 
+          return; 
+        }
+        
+        // Use original Gemini-based extraction
+        await geminiConversion(mode, rawInput, apiKey);
+        return;
+      }
+
+      // We have turns! Format them directly
+      setStep(3);
+      showStatus('Formatting as Markdown...');
+      
+      currentMd = cleanSpacing(formatTurnsToMarkdown(turns));
+      currentFilename = 'copilot-chat-' + today + '.md';
+      
+      setStep(4);
+      renderOutput(currentMd);
+      hideStatus();
+
+    } catch (err) {
+      showStatus('Failed: ' + err.message, 'error');
+      console.error(err);
+    } finally {
+      ['convertBtnHtml','convertBtnText','convertBtnUpload'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.disabled = false;
+      });
+    }
+  }
+
+  // ── Fallback: Gemini-based conversion ─────────────────────────────────────────
+  async function geminiConversion(mode, rawInput, apiKey) {
+    const today = new Date().toISOString().slice(0, 10);
+    let prompt;
+
+    if (mode === 'html' || mode === 'upload') {
+      prompt =
+        'You will receive HTML from a Microsoft Copilot conversation page.\n\n' +
+        'CRITICAL RULES:\n' +
+        '1. Extract every word of visible text. DO NOT summarise or omit anything.\n' +
+        '2. Copy all text VERBATIM — every sentence, every word, unchanged.\n' +
+        '3. Only apply Markdown formatting structure.\n' +
+        '4. Remove only pure UI chrome: Copy/Like/Regenerate/Share buttons, nav, cookie banners.\n\n' +
+        'Output format:\n---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
+        '## User / ## Copilot for each turn. Turns separated by ---. Code in fenced blocks with language tags.\n' +
+        'Blank line before and after every heading and code fence.\n' +
+        'Output ONLY markdown. No preamble.\n\nHTML:\n\n' + rawInput.slice(0, 120000);
+    } else {
+      prompt =
+        'Below is plain text from a Microsoft Copilot conversation.\n\n' +
+        'Your ONLY job is to apply clean Markdown formatting:\n' +
+        '1. COPY ALL TEXT EXACTLY — do not change, summarise, or omit a single word.\n' +
+        '2. Label turns ## User and ## Copilot\n' +
+        '3. Separate turns with --- (horizontal rule).\n' +
+        '4. Wrap code in fenced ``` blocks with language tags.\n' +
+        '5. Ensure a blank line before AND after every heading and code fence.\n' +
+        '6. Apply headings, bold, lists where visible in the text.\n' +
+        '7. Remove only UI chrome: Copy/Regenerate/Like, navigation.\n' +
+        '8. Start with:\n---\nsource: Microsoft Copilot Shared Conversation\nexported: ' + today + '\n---\n\n' +
+        'Output ONLY markdown.\n\nTEXT:\n\n' + rawInput.slice(0, 120000);
+    }
+
+    setStep(3);
+    showStatus('Sending to Gemini for formatting...');
+
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      GEMINI_MODEL + ':generateContent?key=' + apiKey;
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.0 }
+    });
+
+    const MAX_RETRIES = 4;
+    const BASE_MS = 8000;
+
+    try {
+      let data;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body
+        });
+
+        if (res.status === 429) {
+          if (attempt === MAX_RETRIES) throw new Error('Rate limit persists. Wait ~60s then try again.');
+          const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
+          const waitMs = retryAfter > 0 ? retryAfter * 1000 : BASE_MS * Math.pow(2, attempt - 1);
+          showStatus('Rate limit — retrying in ' + Math.round(waitMs / 1000) + 's... (' + attempt + '/' + MAX_RETRIES + ')');
+          await new Promise(r => setTimeout(r, waitMs));
+          showStatus('Sending to Gemini for formatting...');
+          continue;
+        }
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          const msg = (err.error && err.error.message) || ('API error ' + res.status);
+          throw new Error(res.status === 403 ? 'Invalid API key — check your Gemini key.' : msg);
+        }
+
+        data = await res.json();
+        break;
+      }
+
+      const raw = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts)
+        ? data.candidates[0].content.parts.map(p => p.text || '').join('\n')
+        : '';
+
+      if (!raw.trim()) throw new Error('Gemini returned an empty response. Please try again.');
+
+      setStep(4);
+      currentMd = cleanSpacing(raw);
+      currentFilename = 'copilot-chat-' + today + '.md';
+      renderOutput(currentMd);
+      hideStatus();
+
+    } catch (err) {
+      showStatus('Failed: ' + err.message, 'error');
+      console.error(err);
+    }
+  }
+
+  // ── Render output ─────────────────────────────────────────────────────────────
+  function renderOutput(md) {
+    document.getElementById('mdOut').value = md;
+    updateCharLine();
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({ breaks: false, gfm: true });
+      document.getElementById('mdPreview').innerHTML = marked.parse(md);
+    }
+    document.getElementById('charBadge').textContent = md.length.toLocaleString() + ' chars';
+    document.getElementById('outputSection').className = 'output-section visible';
+    document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function updateCharLine() {
+    const v = document.getElementById('mdOut').value;
+    document.getElementById('charLine').textContent =
+      v.length.toLocaleString() + ' characters \u00b7 ' + v.split('\n').length.toLocaleString() + ' lines';
+  }
+
+  document.getElementById('mdOut').addEventListener('input', function () {
+    currentMd = this.value;
+    updateCharLine();
+    if (document.getElementById('panePreview').classList.contains('active') && typeof marked !== 'undefined')
+      document.getElementById('mdPreview').innerHTML = marked.parse(currentMd);
+  });
+
+  function switchOutTab(tab, btn) {
+    document.querySelectorAll('.out-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.out-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tab === 'raw' ? 'paneRaw' : 'panePreview').classList.add('active');
+    if (tab === 'preview' && typeof marked !== 'undefined') {
+      marked.setOptions({ breaks: false, gfm: true });
+      document.getElementById('mdPreview').innerHTML = marked.parse(currentMd);
+    }
+  }
+
+  function downloadMd() {
+    const blob = new Blob([document.getElementById('mdOut').value], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = currentFilename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function copyMd() {
+    try {
+      await navigator.clipboard.writeText(document.getElementById('mdOut').value);
+      const btn = event.target, o = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = o, 1500);
+    } catch { document.getElementById('mdOut').select(); document.execCommand('copy'); }
+  }
+
+  function resetAll() {
+    document.getElementById('htmlInput').value = '';
+    document.getElementById('textInput').value = '';
+    clearFile();
+    document.getElementById('outputSection').className = 'output-section';
+    document.getElementById('convertedBadge').textContent = '\u2713 Converted';
+    document.getElementById('convertedBadge').className = 'badge ok';
+    hideStatus();
+    currentMd = '';
+  }
+</script>
+
 </body>
 </html>
