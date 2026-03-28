@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Copilot &#8594; Markdown</title>
+<title>Copilot → Markdown</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 
 </head>
 <body>
 <div class="container">
-
   <header>
     <div class="eyebrow">Converter Tool</div>
-    <h1>Copilot Chat<br/><span>&#8594; Markdown</span></h1>
-    <p class="subtitle">Extract the full text of a Microsoft Copilot shared conversation and export it as a clean, structured Markdown file.</p>
+    <h1>Copilot Chat <span>→</span> Markdown</h1>
+    <div class="subtitle">
+      Extract the full text of a Microsoft Copilot shared conversation and export it as a clean, structured Markdown file.
+    </div>
   </header>
 
   <div class="instructions" style="margin-bottom:18px">
@@ -58,99 +59,133 @@
 
   <div class="input-panel active" id="panel-html">
     <div class="instructions">
-      <strong>How to get the HTML source</strong>
+      <strong>Fetch from shared URL</strong>
       <ol>
-        <li>Open your Copilot share link in Chrome or Edge and wait for it to fully load</li>
-        <li>Press <code>Ctrl+U</code> (Windows) or <code>&#8984;+U</code> (Mac) to open View Source in a new tab</li>
-        <li>Press <code>Ctrl+A</code> to select all, then <code>Ctrl+C</code> to copy</li>
-        <li>Paste it into the box below and click Convert</li>
+        <li>Paste a public Copilot share URL (<code>https://copilot.microsoft.com/shares/...</code>)</li>
+        <li>Click Convert and the app will try to fetch page content automatically</li>
+        <li>If browser fetch is blocked, use <code>node scripts/save-copilot-share-html.js ...</code> then Upload HTML File</li>
       </ol>
+      <p style="margin-top:10px">Tip: the <em>Fetch URL → Download .html</em> button may fall back to proxy text in restricted browsers. For highest-fidelity saved HTML, use the CLI helper script.</p>
     </div>
-    <label class="field-label">HTML Source</label>
-    <textarea class="paste-area" id="htmlInput" placeholder="Paste the full HTML source code of the Copilot share page here&#8230;"></textarea>
+    <label class="field-label">Copilot Share URL</label>
+    <input class="apikey-input" id="urlInput" type="url" placeholder="https://copilot.microsoft.com/shares/..." autocomplete="off" spellcheck="false" />
     <br/>
-    <button class="convert-btn" id="convertBtnHtml" onclick="startConversion('html')">Convert &#8594; Markdown</button>
+    <button class="convert-btn" id="convertBtnUrl" onclick="startConversion('url')">Fetch + Convert &#8594; Markdown</button>
+    <button class="btn-s" id="downloadHtmlBtn" onclick="downloadHtmlFromUrl()" style="margin-top:12px;margin-left:8px">Fetch URL &#8594; Download .html</button>
   </div>
 
-  <div class="input-panel" id="panel-upload">
+  <div class="input-panel active" id="panel-html">
     <div class="instructions">
-      <strong>How to save the HTML file</strong>
+      <strong>One-time setup</strong>
       <ol>
-        <li>Open your Copilot share link in Chrome or Edge and wait for it to fully load</li>
-        <li>Press <code>Ctrl+S</code> (Windows) or <code>&#8984;+S</code> (Mac) to save the page</li>
-        <li>In the save dialog, set the format to <code>Webpage, Single File (*.mhtml)</code> or <code>Webpage, Complete (*.html)</code></li>
-        <li>Upload that file below</li>
+        <li>Show your bookmarks bar: <code>Ctrl+Shift+B</code></li>
+        <li>Drag the blue button above to the bar</li>
+        <li>Done — you only do this once</li>
+      </ol>
+      <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
+    </div>
+    <div class="instructions">
+      <strong>Every conversation</strong>
+      <ol>
+        <li>Open your Copilot share URL and wait for it to load</li>
+        <li>Click <strong>Export Chat</strong> in your bookmarks bar</li>
+        <li><code>copilot-chat-[date].md</code> downloads instantly ✓</li>
       </ol>
       <p style="margin-top:10px">Want to automate this? Run <code>node scripts/save-copilot-share-html.js https://copilot.microsoft.com/shares/...</code> and upload the generated file.</p>
     </div>
     <label class="field-label">HTML File</label>
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".html,.htm,.mhtml,.mht" style="display:none" onchange="handleFileSelect(this.files)"/>
-      <div class="drop-icon">&#8679;</div>
-      <div class="drop-primary">Drop your .html file here</div>
-      <div class="drop-secondary">or click to browse &#8212; accepts .html, .htm, .mhtml</div>
+    <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-zone-label">⇧</div>
+      <div class="drop-zone-label">Drop your .html file here</div>
+      <div class="drop-zone-hint">or click to browse — .html, .htm, .mhtml</div>
     </div>
-    <div class="file-info" id="fileInfo" style="display:none">
-      <span class="file-icon">&#9672;</span>
-      <span id="fileName">&#8212;</span>
-      <span id="fileSize" class="file-size">&#8212;</span>
-      <button class="file-clear" onclick="clearFile()">&#10005; Remove</button>
+    <input type="file" id="fileInput" class="file-input" accept=".html,.htm,.mhtml" />
+    <div id="fileBadge" class="file-badge" style="display: none;">
+      <span id="fileName">—</span>
+      <span class="remove" onclick="clearFile()">✕ Remove</span>
     </div>
-    <br/>
-    <button class="convert-btn" id="convertBtnUpload" onclick="startConversion('upload')">Convert &#8594; Markdown</button>
+    <button id="convertBtnUpload" class="convert-btn" onclick="startConversion('upload')">
+      Convert → Markdown
+    </button>
   </div>
 
-  <div class="input-panel" id="panel-text">
+  <!-- HTML Source Panel -->
+  <div id="panelHtml" class="input-panel">
+    <div class="instructions">
+      <strong>How to get the HTML source</strong>
+      <ol>
+        <li>Open your Copilot share link and wait for it to fully load</li>
+        <li>Press <code>Ctrl+U</code> to open View Source in a new tab</li>
+        <li>Press <code>Ctrl+A</code> then <code>Ctrl+C</code> to copy all</li>
+        <li>Paste below and click Convert</li>
+      </ol>
+    </div>
+    <label class="field-label">HTML Source</label>
+    <textarea id="htmlInput" class="paste-area" placeholder="<html>..."></textarea>
+    <button id="convertBtnHtml" class="convert-btn" onclick="startConversion('html')">
+      Convert → Markdown
+    </button>
+  </div>
+
+  <!-- Plain Text Panel -->
+  <div id="panelText" class="input-panel">
     <div class="instructions">
       <strong>How to get the plain text</strong>
       <ol>
-        <li>Open your Copilot share link in a browser and wait for the conversation to fully load</li>
-        <li>Click anywhere on the page, then press <code>Ctrl+A</code> to select all visible text</li>
-        <li>Press <code>Ctrl+C</code> to copy, then paste below</li>
+        <li>Open your Copilot share link and wait for it to fully load</li>
+        <li>Press <code>Ctrl+A</code> then <code>Ctrl+C</code> to copy all visible text</li>
+        <li>Paste below and click Convert</li>
       </ol>
     </div>
     <label class="field-label">Plain Text Content</label>
-    <textarea class="paste-area" id="textInput" placeholder="Paste the visible text content of the Copilot conversation here&#8230;"></textarea>
-    <br/>
-    <button class="convert-btn" id="convertBtnText" onclick="startConversion('text')">Convert &#8594; Markdown</button>
+    <textarea id="textInput" class="paste-area" placeholder="Paste copied text here..."></textarea>
+    <button id="convertBtnText" class="convert-btn" onclick="startConversion('text')">
+      Convert → Markdown
+    </button>
   </div>
 
-  <div class="status-bar" id="statusBar">
+  <div id="statusBar" class="status-bar">
     <div class="status-head">
-      <div class="spinner"></div>
-      <span class="status-lbl" id="statusLbl">Processing</span>
+      <span id="statusLbl" class="status-lbl">Processing</span>
     </div>
-    <div class="status-msg" id="statusMsg">Starting&#8230;</div>
-    <div class="steps">
-      <div class="step" id="s1"><div class="step-dot"></div>Parse HTML</div>
-      <div class="step" id="s2"><div class="step-dot"></div>Extract Turns</div>
-      <div class="step" id="s3"><div class="step-dot"></div>Format Markdown</div>
-      <div class="step" id="s4"><div class="step-dot"></div>Ready</div>
+    <div id="statusMsg" class="status-msg">Starting…</div>
+    <div class="step-progress">
+      <div id="step1" class="step-dot"></div>
+      <div id="step2" class="step-dot"></div>
+      <div id="step3" class="step-dot"></div>
+      <div id="step4" class="step-dot"></div>
     </div>
   </div>
 
-  <div class="output-section" id="outputSection">
+  <div id="outputSection" class="output-section">
     <div class="output-header">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <span class="badge ok">&#10003; Converted</span>
-        <span class="badge" id="charBadge">&#8212;</span>
+      <div class="output-title">Ready</div>
+      <div>
+        <span id="convertedBadge" class="badge ok">✓ Converted</span>
+        <span id="charBadge" class="badge">—</span>
       </div>
       <div class="out-actions">
         <button class="btn-s" onclick="copyMd(event)">Copy</button>
         <button class="btn-s" onclick="resetAll()">New</button>
         <button class="btn-dl" onclick="downloadMd()">&#8595; Download .md</button>
+
+      <div class="output-actions">
+        <button class="action-btn" onclick="copyMd()">Copy</button>
+        <button class="action-btn" onclick="resetAll()">New</button>
+        <button class="action-btn" onclick="downloadMd()">↓ Download .md</button>
+
       </div>
     </div>
     <div class="out-tabs">
-      <button class="out-tab active" onclick="switchOutTab('raw',this)">Raw Markdown</button>
-      <button class="out-tab" onclick="switchOutTab('preview',this)">Preview</button>
+      <button class="out-tab active" onclick="switchOutTab('raw', this)">Raw Markdown</button>
+      <button class="out-tab" onclick="switchOutTab('preview', this)">Preview</button>
     </div>
-    <div class="out-pane active" id="paneRaw">
-      <textarea class="md-editor" id="mdOut" spellcheck="false"></textarea>
-      <div class="char-line" id="charLine">0 chars &middot; 0 lines</div>
+    <div id="paneRaw" class="out-pane active">
+      <textarea id="mdOut" class="md-editor"></textarea>
+      <div id="charLine" class="char-line">0 chars · 0 lines</div>
     </div>
-    <div class="out-pane" id="panePreview">
-      <div class="md-preview" id="mdPreview"></div>
+    <div id="panePreview" class="out-pane">
+      <div id="mdPreview" class="md-preview"></div>
     </div>
   </div>
 
