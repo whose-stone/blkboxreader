@@ -2,14 +2,18 @@
   let currentFilename = 'copilot-chat.md';
   let uploadedFileContent = null;
 
-  // ── Drag & drop ──────────────────────────────────────────────────────────────
+  // ── Drag & drop + file picker ────────────────────────────────────────────────
   const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFileSelect(fileInput.files);
   });
 
   function handleFileSelect(files) {
@@ -130,18 +134,10 @@
   }
 
   // ── UI helpers ───────────────────────────────────────────────────────────────
-  function setMode(mode, btn) {
-    document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-' + mode).classList.add('active');
-    hideStatus();
-  }
-
   function setStep(n) {
     for (let i = 1; i <= 4; i++) {
-      document.getElementById('s' + i).className =
-        'step' + (i < n ? ' done' : i === n ? ' active' : '');
+      const el = document.getElementById('step' + i);
+      if (el) el.style.background = i <= n ? 'var(--accent)' : 'var(--border)';
     }
   }
 
@@ -308,7 +304,7 @@
     if (!rawInput) { showStatus('Nothing to convert - please paste some content first.', 'error'); return; }
     if (rawInput.length < 100) { showStatus('Content looks too short. Make sure you have the full page.', 'error'); return; }
 
-    ['convertBtnUrl','convertBtnHtml','convertBtnText','convertBtnUpload','downloadHtmlBtn'].forEach(id => {
+    ['convertBtnUpload'].forEach(id => {
       const el = document.getElementById(id); if (el) el.disabled = true;
     });
     document.getElementById('outputSection').className = 'output-section';
@@ -359,7 +355,7 @@
       showStatus('Failed: ' + err.message, 'error');
       console.error(err);
     } finally {
-      ['convertBtnUrl','convertBtnHtml','convertBtnText','convertBtnUpload','downloadHtmlBtn'].forEach(id => {
+      ['convertBtnUpload'].forEach(id => {
         const el = document.getElementById(id); if (el) el.disabled = false;
       });
     }
@@ -423,9 +419,12 @@
   }
 
   function resetAll() {
-    document.getElementById('urlInput').value = '';
-    document.getElementById('htmlInput').value = '';
-    document.getElementById('textInput').value = '';
+    const urlEl = document.getElementById('urlInput');
+    const htmlEl = document.getElementById('htmlInput');
+    const textEl = document.getElementById('textInput');
+    if (urlEl) urlEl.value = '';
+    if (htmlEl) htmlEl.value = '';
+    if (textEl) textEl.value = '';
     clearFile();
     document.getElementById('outputSection').className = 'output-section';
     hideStatus();
@@ -441,18 +440,8 @@
     if (!installBtn) return;
 
     const payload = getBookmarkletPayload();
-    const txt = 'javascript:' + payload;
-
-    installBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(txt);
-        const old = installBtn.textContent;
-        installBtn.textContent = 'Copied! Paste into a bookmark URL';
-        setTimeout(() => (installBtn.textContent = old), 1800);
-      } catch {
-        showStatus('Could not copy bookmarklet automatically. Copy it from page source if needed.', 'error');
-      }
-    });
+    installBtn.href = 'javascript:' + payload;
+    installBtn.removeAttribute('onclick');
   }
 
   initBookmarkletUi();
