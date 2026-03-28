@@ -59,30 +59,131 @@
   // We extract text from each in DOM order, handling <pre> code blocks specially,
   // then format the extracted turns directly into markdown locally.
 
-  function getNodeText(node) {
-    // Walk the node tree and build a plain-text representation.
-    // <pre> blocks get fenced with ``` so code is preserved in markdown.
+  function getNodeText(node, listDepth) {
+    // Walk the DOM and produce markdown that mirrors Copilot's visual structure.
+    if (listDepth === undefined) listDepth = 0;
     let out = '';
     for (const child of node.childNodes) {
       if (child.nodeType === Node.TEXT_NODE) {
         out += child.textContent;
-      } else if (child.nodeType === Node.ELEMENT_NODE) {
-        const tag = child.tagName.toLowerCase();
-        if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
-        if (tag === 'pre') {
-          // Detect language hint from a sibling button or data attribute if present
-          const langBtn = child.closest('[class*="rounded-xl"]') &&
-                          child.closest('[class*="rounded-xl"]').querySelector('[class*="max-w-24"]');
-          const lang = langBtn ? langBtn.textContent.trim() : '';
-          out += '\n```' + lang + '\n' + child.textContent + '\n```\n';
-        } else if (tag === 'br') {
-          out += '\n';
-        } else {
-          out += getNodeText(child);
-        }
+        continue;
       }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      const tag = child.tagName.toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
+
+      // Code blocks
+      if (tag === 'pre') {
+        const codeEl = child.querySelector('code');
+        const langClass = codeEl ? (codeEl.className || '') : '';
+        const langMatch = langClass.match(/language-(\S+)/);
+        const lang = langMatch ? langMatch[1] : '';
+        out += '\n\n```' + lang + '\n' + (child.textContent || '') + '\n```\n\n';
+        continue;
+      }
+
+      // Headings
+      const hMatch = tag.match(/^h([1-6])$/);
+      if (hMatch) {
+        const level = '#'.repeat(parseInt(hMatch[1]));
+        out += '\n\n' + level + ' ' + getNodeText(child, listDepth).trim() + '\n\n';
+        continue;
+      }
+
+      // Paragraphs and divs that act as paragraphs
+      if (tag === 'p') {
+        out += '\n\n' + getNodeText(child, listDepth).trim() + '\n\n';
+        continue;
+      }
+
+      // Lists
+      if (tag === 'ul' || tag === 'ol') {
+        let idx = 0;
+        out += '\n';
+        for (const li of child.children) {
+          if (li.tagName.toLowerCase() !== 'li') continue;
+          idx++;
+          const indent = '  '.repeat(listDepth);
+          const bullet = tag === 'ol' ? (idx + '. ') : '- ';
+          const content = getNodeText(li, listDepth + 1).trim();
+          out += indent + bullet + content + '\n';
+        }
+        out += '\n';
+        continue;
+      }
+      if (tag === 'li') {
+        out += getNodeText(child, listDepth);
+        continue;
+      }
+
+      // Inline formatting
+      if (tag === 'strong' || tag === 'b') {
+        out += '**' + getNodeText(child, listDepth).trim() + '**';
+        continue;
+      }
+      if (tag === 'em' || tag === 'i') {
+        out += '*' + getNodeText(child, listDepth).trim() + '*';
+        continue;
+      }
+      if (tag === 'code') {
+        out += '`' + (child.textContent || '') + '`';
+        continue;
+      }
+      if (tag === 'a') {
+        const href = child.getAttribute('href') || '';
+        const text = getNodeText(child, listDepth).trim();
+        out += href ? '[' + text + '](' + href + ')' : text;
+        continue;
+      }
+
+      // Line breaks
+      if (tag === 'br') {
+        out += '\n';
+        continue;
+      }
+
+      // Horizontal rules
+      if (tag === 'hr') {
+        out += '\n\n---\n\n';
+        continue;
+      }
+
+      // Blockquotes
+      if (tag === 'blockquote') {
+        const inner = getNodeText(child, listDepth).trim().split('\n').map(l => '> ' + l).join('\n');
+        out += '\n\n' + inner + '\n\n';
+        continue;
+      }
+
+      // Tables
+      if (tag === 'table') {
+        out += '\n\n' + tableToMarkdown(child) + '\n\n';
+        continue;
+      }
+
+      // Everything else — recurse
+      out += getNodeText(child, listDepth);
     }
     return out;
+  }
+
+  function tableToMarkdown(table) {
+    const rows = [];
+    for (const tr of table.querySelectorAll('tr')) {
+      const cells = Array.from(tr.querySelectorAll('th, td')).map(c => c.textContent.trim());
+      rows.push(cells);
+    }
+    if (!rows.length) return '';
+    const colCount = Math.max(...rows.map(r => r.length));
+    const lines = [];
+    rows.forEach((cells, i) => {
+      while (cells.length < colCount) cells.push('');
+      lines.push('| ' + cells.join(' | ') + ' |');
+      if (i === 0) {
+        lines.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+      }
+    });
+    return lines.join('\n');
   }
 
   function extractTurnsFromHtml(html) {
@@ -188,7 +289,11 @@
 
   function buildMarkdownFromTurns(turns, today) {
     const body = turns
-      .map(t => `**${t.role === 'USER' ? 'User' : 'Copilot'}:**\n\n${prettifyBlobText(t.text)}`)
+      .map(t => {
+        // Clean up excessive blank lines but preserve the markdown structure
+        const cleaned = t.text.replace(/\n{3,}/g, '\n\n').trim();
+        return `**${t.role === 'USER' ? 'User' : 'Copilot'}:**\n\n${cleaned}`;
+      })
       .join('\n\n---\n\n');
     return `---\nsource: Microsoft Copilot Shared Conversation\nexported: ${today}\n---\n\n${body}\n`;
   }
@@ -432,7 +537,7 @@
   }
 
   function getBookmarkletPayload() {
-    return "(function(){try{const U='[class*=\\\"group/user-message\\\"],[data-content=\\\"user-message\\\"]';const A='[class*=\\\"group/ai-message-item\\\"],[data-content=\\\"ai-message-item\\\"]';const nodeText=(n)=>{let o='';for(const c of n.childNodes){if(c.nodeType===Node.TEXT_NODE){o+=c.textContent||'';continue;}if(c.nodeType!==Node.ELEMENT_NODE)continue;const t=c.tagName.toLowerCase();if(t==='script'||t==='style'||t==='noscript')continue;if(t==='pre'){o+='\\n```\\n'+(c.textContent||'')+'\\n```\\n';continue;}if(t==='br'){o+='\\n';continue;}o+=nodeText(c);}return o;};const users=Array.from(document.querySelectorAll(U)).map(el=>({el,role:'User'}));const ais=Array.from(document.querySelectorAll(A)).map(el=>({el,role:'Copilot'}));const all=users.concat(ais).sort((a,b)=>{const r=a.el.compareDocumentPosition(b.el);if(r&Node.DOCUMENT_POSITION_FOLLOWING)return-1;if(r&Node.DOCUMENT_POSITION_PRECEDING)return 1;return 0;});if(!all.length){alert('No Copilot turns found on this page. Open a shared conversation first.');return;}const today=new Date().toISOString().slice(0,10);const turns=all.map(({role,el})=>({role,text:nodeText(el).replace(/\\n{3,}/g,'\\n\\n').trim()})).filter(t=>t.text);if(!turns.length){alert('Found message containers, but no text content.');return;}const body=turns.map(t=>'**'+t.role+':**\\n\\n'+t.text).join('\\n\\n---\\n\\n');const md='---\\nsource: Microsoft Copilot Shared Conversation\\nexported: '+today+'\\n---\\n\\n'+body+'\\n';const slug=(location.pathname.split('/').pop()||'copilot-chat').replace(/[^a-zA-Z0-9_-]/g,'')||'copilot-chat';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown;charset=utf-8'}));a.download=slug+'-'+today+'.md';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}catch(e){alert('Copilot-to-Markdown bookmarklet failed: '+(e&&e.message?e.message:e));}})();";
+    return "(function(){try{var U='[class*=\\\"group/user-message\\\"],[data-content=\\\"user-message\\\"]';var A='[class*=\\\"group/ai-message-item\\\"],[data-content=\\\"ai-message-item\\\"]';var tbl=function(t){var rows=[];t.querySelectorAll('tr').forEach(function(tr){var cells=[];tr.querySelectorAll('th,td').forEach(function(c){cells.push(c.textContent.trim())});rows.push(cells)});if(!rows.length)return'';var cc=Math.max.apply(null,rows.map(function(r){return r.length}));var lines=[];rows.forEach(function(cells,i){while(cells.length<cc)cells.push('');lines.push('| '+cells.join(' | ')+' |');if(i===0)lines.push('| '+cells.map(function(){return'---'}).join(' | ')+' |')});return lines.join('\\n')};var nodeText=function(n,d){if(d===undefined)d=0;var o='';for(var i=0;i<n.childNodes.length;i++){var c=n.childNodes[i];if(c.nodeType===Node.TEXT_NODE){o+=c.textContent||'';continue}if(c.nodeType!==Node.ELEMENT_NODE)continue;var t=c.tagName.toLowerCase();if(t==='script'||t==='style'||t==='noscript')continue;if(t==='pre'){var ce=c.querySelector('code');var lc=ce?(ce.className||''):'';var lm=lc.match(/language-(\\S+)/);var lang=lm?lm[1]:'';o+='\\n\\n```'+lang+'\\n'+(c.textContent||'')+'\\n```\\n\\n';continue}var hm=t.match(/^h([1-6])$/);if(hm){var lv='';for(var x=0;x<parseInt(hm[1]);x++)lv+='#';o+='\\n\\n'+lv+' '+nodeText(c,d).trim()+'\\n\\n';continue}if(t==='p'){o+='\\n\\n'+nodeText(c,d).trim()+'\\n\\n';continue}if(t==='ul'||t==='ol'){var idx=0;o+='\\n';for(var j=0;j<c.children.length;j++){var li=c.children[j];if(li.tagName.toLowerCase()!=='li')continue;idx++;var ind='';for(var k=0;k<d;k++)ind+='  ';var bul=t==='ol'?(idx+'. '):'- ';o+=ind+bul+nodeText(li,d+1).trim()+'\\n'}o+='\\n';continue}if(t==='li'){o+=nodeText(c,d);continue}if(t==='strong'||t==='b'){o+='**'+nodeText(c,d).trim()+'**';continue}if(t==='em'||t==='i'){o+='*'+nodeText(c,d).trim()+'*';continue}if(t==='code'){o+='`'+(c.textContent||'')+'`';continue}if(t==='a'){var hr=c.getAttribute('href')||'';var tx=nodeText(c,d).trim();o+=hr?'['+tx+']('+hr+')':tx;continue}if(t==='br'){o+='\\n';continue}if(t==='hr'){o+='\\n\\n---\\n\\n';continue}if(t==='blockquote'){o+='\\n\\n> '+nodeText(c,d).trim().split('\\n').join('\\n> ')+'\\n\\n';continue}if(t==='table'){o+='\\n\\n'+tbl(c)+'\\n\\n';continue}o+=nodeText(c,d)}return o};var users=Array.from(document.querySelectorAll(U)).map(function(el){return{el:el,role:'User'}});var ais=Array.from(document.querySelectorAll(A)).map(function(el){return{el:el,role:'Copilot'}});var all=users.concat(ais).sort(function(a,b){var r=a.el.compareDocumentPosition(b.el);if(r&Node.DOCUMENT_POSITION_FOLLOWING)return-1;if(r&Node.DOCUMENT_POSITION_PRECEDING)return 1;return 0});if(!all.length){alert('No Copilot turns found on this page. Open a shared conversation first.');return}var today=new Date().toISOString().slice(0,10);var turns=all.map(function(item){return{role:item.role,text:nodeText(item.el).replace(/\\n{3,}/g,'\\n\\n').trim()}}).filter(function(t){return t.text});if(!turns.length){alert('Found message containers, but no text content.');return}var body=turns.map(function(t){return'**'+t.role+':**\\n\\n'+t.text}).join('\\n\\n---\\n\\n');var md='---\\nsource: Microsoft Copilot Shared Conversation\\nexported: '+today+'\\n---\\n\\n'+body+'\\n';var slug=(location.pathname.split('/').pop()||'copilot-chat').replace(/[^a-zA-Z0-9_-]/g,'')||'copilot-chat';var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown;charset=utf-8'}));a.download=slug+'-'+today+'.md';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},1000)}catch(e){alert('Copilot-to-Markdown bookmarklet failed: '+(e&&e.message?e.message:e))}})();";
   }
 
   function initBookmarkletUi() {
